@@ -14,6 +14,8 @@ interface LeaveRecord {
   date: string;
   type: string;
   hours: number | null;
+  startTime: string | null;
+  endTime: string | null;
   consumedDays: number;
   note: string | null;
   fiscalYear: { year: number; grantedDays: number };
@@ -199,9 +201,16 @@ export default function HistoryPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right text-slate-600">
-                      {record.type === "hourly" && record.hours != null
-                        ? `${record.hours}h`
-                        : "—"}
+                      {record.type === "hourly" && record.hours != null ? (
+                        <div>
+                          <div>{record.hours}h</div>
+                          {record.startTime && record.endTime && (
+                            <div className="text-xs text-slate-400">
+                              {record.startTime}〜{record.endTime}
+                            </div>
+                          )}
+                        </div>
+                      ) : "—"}
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-slate-700">
                       {record.consumedDays % 1 === 0
@@ -253,7 +262,7 @@ export default function HistoryPage() {
                     <div className="mt-1 text-sm text-slate-500">
                       {record.fiscalYear.year}年度
                       {record.type === "hourly" && record.hours != null
-                        ? ` ・ ${record.hours}時間`
+                        ? ` ・ ${record.hours}時間${record.startTime && record.endTime ? `（${record.startTime}〜${record.endTime}）` : ""}`
                         : ""}
                       {record.note ? ` ・ ${record.note}` : ""}
                     </div>

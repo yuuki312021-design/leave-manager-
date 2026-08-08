@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { fiscalYearId, date, type, hours, note } = body;
+    const { fiscalYearId, date, type, hours, startTime, endTime, note } = body;
 
     if (!fiscalYearId || !date || !type) {
       return NextResponse.json(
@@ -58,6 +58,8 @@ export async function POST(request: NextRequest) {
         date,
         type,
         hours: type === "hourly" ? Number(hours) : null,
+        startTime: type === "hourly" ? (startTime ?? null) : null,
+        endTime: type === "hourly" ? (endTime ?? null) : null,
         consumedDays,
         note: note ?? null,
       },

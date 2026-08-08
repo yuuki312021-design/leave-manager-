@@ -29,6 +29,8 @@ export default function RegisterPage() {
     date: today,
     type: "full" as LeaveType,
     hours: "",
+    startTime: "",
+    endTime: "",
     note: "",
     fiscalYearId: "",
   });
@@ -58,6 +60,27 @@ export default function RegisterPage() {
     }));
   };
 
+  // 開始・終了時刻から時間数を自動計算
+  const calcHoursFromTime = (start: string, end: string): string => {
+    if (!start || !end) return "";
+    const [sh, sm] = start.split(":").map(Number);
+    const [eh, em] = end.split(":").map(Number);
+    const diffMin = (eh * 60 + em) - (sh * 60 + sm);
+    if (diffMin <= 0) return "";
+    const h = diffMin / 60;
+    return String(Math.round(h * 10) / 10);
+  };
+
+  const handleStartTimeChange = (val: string) => {
+    const newHours = calcHoursFromTime(val, form.endTime);
+    setForm((prev) => ({ ...prev, startTime: val, hours: newHours }));
+  };
+
+  const handleEndTimeChange = (val: string) => {
+    const newHours = calcHoursFromTime(form.startTime, val);
+    setForm((prev) => ({ ...prev, endTime: val, hours: newHours }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -79,6 +102,8 @@ export default function RegisterPage() {
           return;
         }
         payload.hours = h;
+        payload.startTime = form.startTime || null;
+        payload.endTime = form.endTime || null;
       }
 
       const res = await fetch("/api/leave-records", {
@@ -95,6 +120,8 @@ export default function RegisterPage() {
           date: today,
           type: "full",
           hours: "",
+          startTime: "",
+          endTime: "",
           note: "",
           fiscalYearId: form.fiscalYearId,
         });
@@ -176,6 +203,8 @@ export default function RegisterPage() {
                           ...prev,
                           type: e.target.value as LeaveType,
                           hours: "",
+                          startTime: "",
+                          endTime: "",
                         }))
                       }
                       className="text-blue-600"
@@ -188,37 +217,69 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* 時間数（時間給のみ） */}
+            {/* 時間給専用フィールド */}
             {form.type === "hourly" && (
-              <div>
-                <label className="label" htmlFor="hours">
-                  時間数 <span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    id="hours"
-                    type="number"
-                    min="0.5"
-                    max="8"
-                    step="0.5"
-                    required
-                    className="input-field"
-                    value={form.hours}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, hours: e.target.value }))
-                    }
-                    placeholder="例: 2"
-                  />
-                  <span className="text-sm text-slate-500 whitespace-nowrap">
-                    時間
-                  </span>
-                </div>
-                {form.hours && (
-                  <p className="text-xs text-slate-500 mt-1">
-                    = {(parseFloat(form.hours) / 8).toFixed(3).replace(/\.?0+$/, "")} 日分
+              <>
+                {/* 開始・終了時刻 */}
+                <div>
+                  <label className="label">
+                    取得時刻
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="startTime"
+                      type="time"
+                      className="input-field"
+                      value={form.startTime}
+                      onChange={(e) => handleStartTimeChange(e.target.value)}
+                      placeholder="09:00"
+                    />
+                    <span className="text-slate-400 text-sm whitespace-nowrap">〜</span>
+                    <input
+                      id="endTime"
+                      type="time"
+                      className="input-field"
+                      value={form.endTime}
+                      onChange={(e) => handleEndTimeChange(e.target.value)}
+                      placeholder="11:00"
+                    />
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">
+                    ※ 時刻を入力すると時間数が自動計算されます
                   </p>
-                )}
-              </div>
+                </div>
+
+                {/* 時間数 */}
+                <div>
+                  <label className="label" htmlFor="hours">
+                    時間数 <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="hours"
+                      type="number"
+                      min="0.5"
+                      max="8"
+                      step="0.5"
+                      required
+                      className="input-field"
+                      value={form.hours}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, hours: e.target.value }))
+                      }
+                      placeholder="例: 2"
+                    />
+                    <span className="text-sm text-slate-500 whitespace-nowrap">
+                      時間
+                    </span>
+                  </div>
+                  {form.hours && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      = {(parseFloat(form.hours) / 8).toFixed(3).replace(/\.?0+$/, "")} 日分
+                    </p>
+                  )}
+                </div>
+              </>
             )}
 
             {/* 年度 */}

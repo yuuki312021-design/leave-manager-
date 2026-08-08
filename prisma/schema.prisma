@@ -22,16 +22,20 @@ model FiscalYear {
 }
 
 model LeaveRecord {
-  id           Int        @id @default(autoincrement())
-  fiscalYearId Int
-  date         String     // YYYY-MM-DD形式
-  type         String     // full / am_half / pm_half / hourly
-  hours        Float?     // 時間給の場合のみ
-  consumedDays Float      // 消化日数（自動計算）
-  note         String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  fiscalYear   FiscalYear @relation(fields: [fiscalYearId], references: [id], onDelete: Cascade)
+  id                 Int        @id @default(autoincrement())
+  fiscalYearId       Int
+  date               String     // YYYY-MM-DD形式
+  type               String     // full / am_half / pm_half / hourly
+  hours              Float?     // 時間給の場合のみ
+  startTime          String?    // 時間給の開始時刻 (HH:MM)
+  endTime            String?    // 時間給の終了時刻 (HH:MM)
+  consumedDays       Float      // 消化日数（自動計算）
+  note               String?
+  notifiedDaybefore  Boolean    @default(false)
+  notifiedDayof      Boolean    @default(false)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  fiscalYear         FiscalYear @relation(fields: [fiscalYearId], references: [id], onDelete: Cascade)
 
   @@map("leave_records")
 }

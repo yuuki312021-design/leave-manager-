@@ -19,6 +19,8 @@ interface LeaveRecord {
   date: string;
   type: string;
   hours: number | null;
+  startTime: string | null;
+  endTime: string | null;
   consumedDays: number;
   note: string | null;
   fiscalYear: { year: number; grantedDays: number };
@@ -49,10 +51,58 @@ function SummaryCard({
   );
 }
 
+/** 今日・明日の予定バナー */
+function ScheduleBanner({
+  label,
+  records,
+  color,
+}: {
+  label: string;
+  records: LeaveRecord[];
+  color: string;
+}) {
+  if (records.length === 0) return null;
+  return (
+    <div className={`rounded-xl border-l-4 ${color} bg-white shadow-sm p-4`}>
+      <p className="text-sm font-semibold text-slate-700 mb-2">{label}</p>
+      <ul className="space-y-1">
+        {records.map((r) => {
+          const timeStr =
+            r.type === "hourly" && r.hours != null
+              ? ` ・ ${r.hours}時間${r.startTime && r.endTime ? `（${r.startTime}〜${r.endTime}）` : ""}`
+              : "";
+          return (
+            <li key={r.id} className="text-sm text-slate-600 flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-current opacity-60 flex-shrink-0" />
+              <span>
+                {LEAVE_TYPE_SHORT[r.type as LeaveType]}
+                {timeStr}
+                {r.note ? ` ／ ${r.note}` : ""}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function todayStr(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+function tomorrowStr(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split("T")[0];
+}
+
 export default function DashboardPage() {
   const currentYear = getCurrentFiscalYear();
   const [fiscalYear, setFiscalYear] = useState<FiscalYear | null>(null);
   const [recentRecords, setRecentRecords] = useState<LeaveRecord[]>([]);
+  const [todayRecords, setTodayRecords] = useState<LeaveRecord[]>([]);
+  const [tomorrowRecords, setTomorrowRecords] = useState<LeaveRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -68,6 +118,12 @@ export default function DashboardPage() {
         const current = fyList.find((f) => f.year === currentYear) ?? null;
         setFiscalYear(current);
         setRecentRecords(records.slice(0, 5));
+
+        // 今日・明日の予定を抽出
+        const today = todayStr();
+        const tomorrow = tomorrowStr();
+        setTodayRecords(records.filter((r) => r.date === today));
+        setTomorrowRecords(records.filter((r) => r.date === tomorrow));
       } catch (e) {
         console.error(e);
       } finally {
@@ -116,6 +172,18 @@ export default function DashboardPage() {
           + 有給登録
         </Link>
       </div>
+
+      {/* 今日・明日の予定バナー */}
+      <ScheduleBanner
+        label={`今日の予定（${todayStr()}）`}
+        records={todayRecords}
+        color="border-orange-400"
+      />
+      <ScheduleBanner
+        label={`明日の予定（${tomorrowStr()}）`}
+        records={tomorrowRecords}
+        color="border-blue-400"
+      />
 
       {!fiscalYear ? (
         <div className="card text-center py-10">
@@ -229,7 +297,7 @@ export default function DashboardPage() {
                       <span className="ml-3 text-xs text-slate-500">
                         {LEAVE_TYPE_SHORT[record.type as LeaveType]}
                         {record.type === "hourly" && record.hours != null
-                          ? `（${record.hours}時間）`
+                          ? `（${record.hours}時間${record.startTime && record.endTime ? ` ${record.startTime}〜${record.endTime}` : ""}）`
                           : ""}
                       </span>
                     </div>
