@@ -15,11 +15,10 @@ function tomorrowStr(): string {
 }
 
 /** メール送信ヘルパー */
-async function sendMail(subject: string, html: string) {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, NOTIFICATION_EMAIL } =
-    process.env;
+async function sendMail(to: string, subject: string, html: string) {
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
 
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !NOTIFICATION_EMAIL) {
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
     console.warn("[notifications] SMTP設定が不完全なためメール送信をスキップします");
     return;
   }
@@ -36,7 +35,7 @@ async function sendMail(subject: string, html: string) {
 
   await transporter.sendMail({
     from: SMTP_USER,
-    to: NOTIFICATION_EMAIL,
+    to,
     subject,
     html,
   });
@@ -84,50 +83,72 @@ export async function GET(request: NextRequest) {
     const today = todayStr();
     const tomorrow = tomorrowStr();
 
-    // 前日通知対象: 明日が取得日 かつ notifiedDaybefore=false
+    // 前日通知対象: 明日が取得日 かつ notifiedDaybefore=false（ユーザー情報込み）
     const tomorrowRecords = await prisma.leaveRecord.findMany({
       where: { date: tomorrow, notifiedDaybefore: false },
+      include: { user: { select: { email: true, name: true } } },
     });
 
-    // 当日通知対象: 今日が取得日 かつ notifiedDayof=false
+    // 当日通知対象: 今日が取得日 かつ notifiedDayof=false（ユーザー情報込み）
     const todayRecords = await prisma.leaveRecord.findMany({
       where: { date: today, notifiedDayof: false },
+      include: { user: { select: { email: true, name: true } } },
     });
 
     let sentDaybefore = 0;
     let sentDayof = 0;
 
+    // ユーザーIDごとにグループ化してメール送信
+    type RecordWithUser = (typeof tomorrowRecords)[number];
+
+    function groupByUser(records: RecordWithUser[]) {
+      const map = new Map<number, { email: string; name: string; records: RecordWithUser[] }>();
+      for (const r of records) {
+        if (!r.user) continue; // 孤立データはスキップ
+        if (!map.has(r.userId)) {
+          map.set(r.userId, { email: r.user.email, name: r.user.name, records: [] });
+        }
+        map.get(r.userId)!.records.push(r);
+      }
+      return map;
+    }
+
     // 前日通知
-    if (tomorrowRecords.length > 0) {
-      const lines = tomorrowRecords.map(formatRecord).join("<br>");
+    const tomorrowByUser = groupByUser(tomorrowRecords);
+    for (const [, { email, records }] of tomorrowByUser) {
       const html = `
         <h2>【有給取得リマインダー】明日の予定</h2>
         <p>明日（${tomorrow}）に以下の有給取得が登録されています：</p>
-        <ul>${tomorrowRecords.map((r) => `<li>${formatRecord(r)}</li>`).join("")}</ul>
+        <ul>${records.map((r) => `<li>${formatRecord(r)}</li>`).join("")}</ul>
         <p>有給管理アプリより自動送信</p>
       `;
-      await sendMail(`【有給リマインダー】明日（${tomorrow}）の予定`, html);
+      await sendMail(email, `【有給リマインダー】明日（${tomorrow}）の予定`, html);
+      sentDaybefore += records.length;
+    }
+    if (tomorrowRecords.length > 0) {
       await prisma.leaveRecord.updateMany({
         where: { id: { in: tomorrowRecords.map((r) => r.id) } },
         data: { notifiedDaybefore: true },
       });
-      sentDaybefore = tomorrowRecords.length;
     }
 
     // 当日通知
-    if (todayRecords.length > 0) {
+    const todayByUser = groupByUser(todayRecords);
+    for (const [, { email, records }] of todayByUser) {
       const html = `
         <h2>【有給取得リマインダー】本日の予定</h2>
         <p>本日（${today}）に以下の有給取得が登録されています：</p>
-        <ul>${todayRecords.map((r) => `<li>${formatRecord(r)}</li>`).join("")}</ul>
+        <ul>${records.map((r) => `<li>${formatRecord(r)}</li>`).join("")}</ul>
         <p>有給管理アプリより自動送信</p>
       `;
-      await sendMail(`【有給リマインダー】本日（${today}）の予定`, html);
+      await sendMail(email, `【有給リマインダー】本日（${today}）の予定`, html);
+      sentDayof += records.length;
+    }
+    if (todayRecords.length > 0) {
       await prisma.leaveRecord.updateMany({
         where: { id: { in: todayRecords.map((r) => r.id) } },
         data: { notifiedDayof: true },
       });
-      sentDayof = todayRecords.length;
     }
 
     return NextResponse.json({

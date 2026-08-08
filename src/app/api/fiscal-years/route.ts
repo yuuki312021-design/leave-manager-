@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/fiscal-years
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = Number(session.user.id);
+
     const fiscalYears = await prisma.fiscalYear.findMany({
+      where: { userId },
       orderBy: { year: "desc" },
       include: {
         leaveRecords: {
@@ -28,6 +37,12 @@ export async function GET() {
 // POST /api/fiscal-years
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = Number(session.user.id);
+
     const body = await request.json();
     const { year, grantedDays } = body;
 
@@ -39,9 +54,9 @@ export async function POST(request: NextRequest) {
     }
 
     const fiscalYear = await prisma.fiscalYear.upsert({
-      where: { year: Number(year) },
+      where: { userId_year: { userId, year: Number(year) } },
       update: { grantedDays: Number(grantedDays) },
-      create: { year: Number(year), grantedDays: Number(grantedDays) },
+      create: { userId, year: Number(year), grantedDays: Number(grantedDays) },
     });
 
     return NextResponse.json(fiscalYear, { status: 201 });

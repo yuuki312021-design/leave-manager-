@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 
 const navItems = [
   { href: "/", label: "ダッシュボード", icon: "📊" },
@@ -12,6 +13,10 @@ const navItems = [
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+
+  // ログイン・登録ページではナビゲーションを非表示
+  if (pathname === "/login" || pathname === "/signup") return null;
 
   return (
     <>
@@ -21,6 +26,18 @@ export default function Navigation() {
           <h1 className="text-lg font-bold text-slate-800">有給管理</h1>
           <p className="text-xs text-slate-500 mt-0.5">Leave Manager</p>
         </div>
+
+        {/* ユーザー情報 */}
+        {session?.user && (
+          <div className="px-5 py-3 border-b border-slate-100 bg-slate-50">
+            <p className="text-xs text-slate-400">ログイン中</p>
+            <p className="text-sm font-medium text-slate-700 truncate mt-0.5">
+              {session.user.name}
+            </p>
+            <p className="text-xs text-slate-400 truncate">{session.user.email}</p>
+          </div>
+        )}
+
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
@@ -40,6 +57,17 @@ export default function Navigation() {
             );
           })}
         </nav>
+
+        {/* ログアウトボタン */}
+        <div className="px-3 py-4 border-t border-slate-200">
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+          >
+            <span className="text-base">🚪</span>
+            ログアウト
+          </button>
+        </div>
       </aside>
 
       {/* モバイル用ボトムナビ */}
@@ -62,6 +90,14 @@ export default function Navigation() {
               </Link>
             );
           })}
+          {/* モバイルのログアウトボタン */}
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium text-slate-500"
+          >
+            <span className="text-xl">🚪</span>
+            <span className="leading-tight">ログアウト</span>
+          </button>
         </div>
       </nav>
     </>

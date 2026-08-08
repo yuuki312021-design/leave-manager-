@@ -10,19 +10,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           Int           @id @default(autoincrement())
+  email        String        @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime      @default(now())
+  fiscalYears  FiscalYear[]
+  leaveRecords LeaveRecord[]
+
+  @@map("users")
+}
+
 model FiscalYear {
   id           Int           @id @default(autoincrement())
-  year         Int           @unique
+  userId       Int
+  year         Int
   grantedDays  Float
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   leaveRecords LeaveRecord[]
 
+  @@unique([userId, year])
   @@map("fiscal_years")
 }
 
 model LeaveRecord {
   id                 Int        @id @default(autoincrement())
+  userId             Int
   fiscalYearId       Int
   date               String     // YYYY-MM-DD形式
   type               String     // full / am_half / pm_half / hourly
@@ -35,6 +51,7 @@ model LeaveRecord {
   notifiedDayof      Boolean    @default(false)
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
+  user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   fiscalYear         FiscalYear @relation(fields: [fiscalYearId], references: [id], onDelete: Cascade)
 
   @@map("leave_records")

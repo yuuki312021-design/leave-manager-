@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calcConsumedDays, type LeaveType } from "@/lib/utils";
 
@@ -8,6 +10,12 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = Number(session.user.id);
+
     const { id } = await params;
     const body = await request.json();
     const { date, type, hours, note } = body;
@@ -24,6 +32,14 @@ export async function PUT(
         { error: "時間給の場合は時間数（1以上）を入力してください" },
         { status: 400 }
       );
+    }
+
+    // 所有権チェック
+    const existing = await prisma.leaveRecord.findFirst({
+      where: { id: Number(id), userId },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     const consumedDays = calcConsumedDays(type as LeaveType, hours);
@@ -55,7 +71,22 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = Number(session.user.id);
+
     const { id } = await params;
+
+    // 所有権チェック
+    const existing = await prisma.leaveRecord.findFirst({
+      where: { id: Number(id), userId },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     await prisma.leaveRecord.delete({
       where: { id: Number(id) },
     });
