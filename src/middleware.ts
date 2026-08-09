@@ -30,6 +30,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // パスワードリセット関連ページ: 未認証でもアクセス可能
+  if (
+    pathname === "/auth/forgot-password" ||
+    pathname.startsWith("/auth/reset-password")
+  ) {
+    return NextResponse.next();
+  }
+
   // その他のページ: 未認証ならログインへリダイレクト
   if (!token) {
     return NextResponse.redirect(new URL("/login", request.url));
