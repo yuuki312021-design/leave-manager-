@@ -43,7 +43,10 @@ async function main() {
         await client.execute(stmt);
         console.log(`OK: ${preview}...`);
       } catch (e) {
-        if (e.message && e.message.includes("already exists")) {
+        if (
+          e.message &&
+          (e.message.includes("already exists") || e.message.includes("duplicate column"))
+        ) {
           console.log(`SKIP (already exists): ${preview}...`);
         } else {
           console.error(`Error: ${preview}...`);

@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LEAVE_TYPE_LABELS, LEAVE_TYPE_SHORT, type LeaveType } from "@/lib/utils";
+import {
+  LEAVE_TYPE_LABELS,
+  LEAVE_TYPE_SHORT,
+  LEAVE_TYPE_BADGE,
+  type LeaveType,
+} from "@/lib/utils";
 
 interface FiscalYear {
   id: number;
@@ -21,12 +26,7 @@ interface LeaveRecord {
   fiscalYear: { year: number; grantedDays: number };
 }
 
-const TYPE_BADGE: Record<LeaveType, string> = {
-  full: "bg-blue-100 text-blue-700",
-  am_half: "bg-purple-100 text-purple-700",
-  pm_half: "bg-indigo-100 text-indigo-700",
-  hourly: "bg-amber-100 text-amber-700",
-};
+const TYPE_BADGE = LEAVE_TYPE_BADGE;
 
 // 編集フォームの状態
 interface EditForm {
@@ -279,8 +279,13 @@ export default function HistoryPage() {
     setRecords((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
   };
 
-  // 年度ごとの消化合計
-  const totalConsumed = records.reduce((sum, r) => sum + r.consumedDays, 0);
+  // 年度ごとの消化合計（特別有給は通常有給の残日数計算から除外）
+  const totalConsumed = records
+    .filter((r) => r.type !== "special")
+    .reduce((sum, r) => sum + r.consumedDays, 0);
+  const specialConsumed = records
+    .filter((r) => r.type === "special")
+    .reduce((sum, r) => sum + r.consumedDays, 0);
 
   // 選択年度の付与日数
   const grantedDays =
@@ -333,7 +338,11 @@ export default function HistoryPage() {
 
       {/* サマリー */}
       {selectedYear !== "all" && grantedDays !== null && (
-        <div className="grid grid-cols-3 gap-3">
+        <div
+          className={`grid gap-3 ${
+            specialConsumed > 0 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"
+          }`}
+        >
           <div className="card text-center py-3 border-l-4 border-blue-400">
             <p className="text-xs text-slate-500">付与</p>
             <p className="text-xl font-bold text-slate-700 mt-1">
@@ -359,6 +368,15 @@ export default function HistoryPage() {
               <span className="text-xs font-normal ml-0.5">日</span>
             </p>
           </div>
+          {specialConsumed > 0 && (
+            <div className="card text-center py-3 border-l-4 border-pink-400">
+              <p className="text-xs text-slate-500">特別有給</p>
+              <p className="text-xl font-bold text-slate-700 mt-1">
+                {specialConsumed}
+                <span className="text-xs font-normal ml-0.5">日</span>
+              </p>
+            </div>
+          )}
         </div>
       )}
 

@@ -16,6 +16,7 @@ model User {
   email        String        @unique
   passwordHash String
   name         String
+  joinedAt     DateTime?     @map("joined_at") // 入社日
   createdAt    DateTime      @default(now())
   fiscalYears  FiscalYear[]
   leaveRecords LeaveRecord[]

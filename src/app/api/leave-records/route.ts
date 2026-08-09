@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { calcConsumedDays, type LeaveType } from "@/lib/utils";
+import { calcConsumedDays, calcSpecialLeaveInfo, type LeaveType } from "@/lib/utils";
 
 // GET /api/leave-records?year=2024
 export async function GET(request: NextRequest) {
@@ -73,6 +73,42 @@ export async function POST(request: NextRequest) {
     }
 
     const consumedDays = calcConsumedDays(type as LeaveType, hours);
+
+    // 特別有給休暇の利用可能判定
+    if (type === "special") {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { joinedAt: true },
+      });
+      const joinedAtStr = user?.joinedAt
+        ? user.joinedAt.toISOString().split("T")[0]
+        : null;
+      if (!joinedAtStr) {
+        return NextResponse.json(
+          { error: "入社日が設定されていないため特別有給休暇を利用できません" },
+          { status: 400 }
+        );
+      }
+      const specialRecords = await prisma.leaveRecord.findMany({
+        where: { userId, type: "special" },
+        select: { date: true, consumedDays: true },
+      });
+      const info = calcSpecialLeaveInfo(joinedAtStr, specialRecords);
+      if (!info || info.remainingDays <= 0) {
+        return NextResponse.json(
+          { error: "特別有給休暇の残日数がありません" },
+          { status: 400 }
+        );
+      }
+      if (date < info.anniversaryStart || date > info.anniversaryEnd) {
+        return NextResponse.json(
+          {
+            error: `特別有給休暇は ${info.anniversaryStart} 〜 ${info.anniversaryEnd} の期間のみ利用できます`,
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     const record = await prisma.leaveRecord.create({
       data: {

@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCurrentFiscalYear } from "@/lib/utils";
+import {
+  calcSpecialLeaveInfo,
+  calcTenure,
+  getCurrentFiscalYear,
+} from "@/lib/utils";
 
 interface FiscalYear {
   id: number;
@@ -10,9 +14,19 @@ interface FiscalYear {
   leaveRecords: { consumedDays: number; type: string }[];
 }
 
+interface Profile {
+  id: number;
+  name: string;
+  email: string;
+  joinedAt: string | null;
+}
+
 export default function SettingsPage() {
   const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [joinedAt, setJoinedAt] = useState("");
   const [loading, setLoading] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDays, setEditDays] = useState("");
   const [saving, setSaving] = useState(false);
@@ -26,15 +40,47 @@ export default function SettingsPage() {
 
   const loadData = () => {
     setLoading(true);
-    fetch("/api/fiscal-years")
-      .then((r) => r.json())
-      .then((data: FiscalYear[]) => setFiscalYears(data))
+    Promise.all([
+      fetch("/api/fiscal-years").then((r) => r.json()),
+      fetch("/api/profile").then((r) => r.json()),
+    ])
+      .then(([fyData, profileData]: [FiscalYear[], Profile]) => {
+        setFiscalYears(fyData);
+        setProfile(profileData);
+        setJoinedAt(profileData.joinedAt ?? "");
+      })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleProfileSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    setProfileSaving(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ joinedAt: joinedAt || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "保存に失敗しました");
+      } else {
+        setProfile(data);
+        setJoinedAt(data.joinedAt ?? "");
+        setSuccess("プロフィールを保存しました");
+      }
+    } catch {
+      setError("通信エラー");
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,16 +147,74 @@ export default function SettingsPage() {
     }
   };
 
+  const tenure = joinedAt ? calcTenure(joinedAt) : null;
+  const specialLeave = joinedAt ? calcSpecialLeaveInfo(joinedAt, []) : null;
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-800">年度設定</h2>
+        <h2 className="text-2xl font-bold text-slate-800">設定</h2>
         <p className="text-sm text-slate-500 mt-0.5">
-          年度ごとの有給付与日数を設定します
+          プロフィールと年度ごとの有給付与日数を設定します
         </p>
       </div>
 
-      {/* 新規追加フォーム */}
+      {/* プロフィール設定 */}
+      <div className="card max-w-lg">
+        <h3 className="font-semibold text-slate-700 mb-4">プロフィール</h3>
+        {profile && (
+          <div className="mb-4 text-sm text-slate-600 space-y-1">
+            <p>
+              <span className="text-slate-400">名前:</span> {profile.name}
+            </p>
+            <p>
+              <span className="text-slate-400">メール:</span> {profile.email}
+            </p>
+          </div>
+        )}
+        <form onSubmit={handleProfileSave} className="space-y-4">
+          <div>
+            <label className="label" htmlFor="joinedAt">
+              入社日
+            </label>
+            <input
+              id="joinedAt"
+              type="date"
+              className="input-field"
+              value={joinedAt}
+              onChange={(e) => setJoinedAt(e.target.value)}
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              入社日を設定すると勤続年数と特別有給の判定が有効になります
+            </p>
+          </div>
+
+          {tenure && (
+            <div className="text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
+              勤続年数:{" "}
+              <strong className="text-slate-800">
+                {tenure.years}年{tenure.months}か月
+              </strong>
+            </div>
+          )}
+          {specialLeave?.isEligible && (
+            <div className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">
+              入社{specialLeave.milestone}年の特別有給対象期間です（
+              {specialLeave.anniversaryStart} 〜 {specialLeave.anniversaryEnd}）
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={profileSaving}
+            className="btn-primary"
+          >
+            {profileSaving ? "保存中..." : "プロフィールを保存"}
+          </button>
+        </form>
+      </div>
+
+      {/* 新規年度追加フォーム */}
       <div className="card max-w-lg">
         <h3 className="font-semibold text-slate-700 mb-4">年度を追加</h3>
         <form onSubmit={handleAdd} className="space-y-4">
@@ -189,10 +293,9 @@ export default function SettingsPage() {
         ) : (
           <div className="space-y-3">
             {fiscalYears.map((fy) => {
-              const consumed = fy.leaveRecords.reduce(
-                (sum, r) => sum + r.consumedDays,
-                0
-              );
+              const consumed = fy.leaveRecords
+                .filter((r) => r.type !== "special")
+                .reduce((sum, r) => sum + r.consumedDays, 0);
               const remaining = fy.grantedDays - consumed;
               const isEditing = editingId === fy.id;
 
@@ -253,7 +356,9 @@ export default function SettingsPage() {
                             <strong className="text-orange-600">
                               {consumed % 1 === 0
                                 ? consumed
-                                : consumed.toFixed(3).replace(/\.?0+$/, "")}
+                                : consumed
+                                    .toFixed(3)
+                                    .replace(/\.?0+$/, "")}
                             </strong>{" "}
                             日
                           </span>
@@ -268,7 +373,9 @@ export default function SettingsPage() {
                             >
                               {remaining % 1 === 0
                                 ? remaining
-                                : remaining.toFixed(3).replace(/\.?0+$/, "")}
+                                : remaining
+                                    .toFixed(3)
+                                    .replace(/\.?0+$/, "")}
                             </strong>{" "}
                             日
                           </span>

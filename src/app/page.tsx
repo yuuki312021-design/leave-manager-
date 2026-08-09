@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getCurrentFiscalYear, LEAVE_TYPE_SHORT, type LeaveType } from "@/lib/utils";
+import {
+  getCurrentFiscalYear,
+  LEAVE_TYPE_SHORT,
+  type LeaveType,
+} from "@/lib/utils";
 
 interface FiscalYear {
   id: number;
@@ -24,6 +28,26 @@ interface LeaveRecord {
   consumedDays: number;
   note: string | null;
   fiscalYear: { year: number; grantedDays: number };
+}
+
+interface UserInfo {
+  joinedAt: string | null;
+  tenure: { years: number; months: number; text: string } | null;
+  specialLeave: {
+    milestone: number;
+    anniversaryStart: string;
+    anniversaryEnd: string;
+    grantedDays: number;
+    usedDays: number;
+    remainingDays: number;
+  } | null;
+}
+
+interface DashboardData {
+  currentYear: number;
+  fiscalYear: FiscalYear | null;
+  records: LeaveRecord[];
+  profile: UserInfo;
 }
 
 function SummaryCard({
@@ -105,23 +129,27 @@ export default function DashboardPage() {
   const [recentRecords, setRecentRecords] = useState<LeaveRecord[]>([]);
   const [todayRecords, setTodayRecords] = useState<LeaveRecord[]>([]);
   const [tomorrowRecords, setTomorrowRecords] = useState<LeaveRecord[]>([]);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [fyRes, recRes] = await Promise.all([
+        const [fyRes, recRes, profileRes] = await Promise.all([
           fetch("/api/fiscal-years"),
           fetch(`/api/leave-records?year=${currentYear}`),
+          fetch("/api/profile"),
         ]);
         const fyList: FiscalYear[] = await fyRes.json();
         const records: LeaveRecord[] = await recRes.json();
+        const userData: UserInfo = await profileRes.json();
 
         const current = fyList.find((f) => f.year === currentYear) ?? null;
         setFiscalYear(current);
         setRecentRecords(records.slice(0, 5));
+        setUserInfo(userData);
 
-        // 今日・明日の予定を抽出
+        // 今日・明日の予定を抽出（特別有給も含む）
         const today = todayStr();
         const tomorrow = tomorrowStr();
         setTodayRecords(records.filter((r) => r.date === today));
@@ -135,12 +163,14 @@ export default function DashboardPage() {
     fetchData();
   }, [currentYear]);
 
-  const totalConsumed =
-    fiscalYear?.leaveRecords.reduce((sum, r) => sum + r.consumedDays, 0) ?? 0;
+  // 通常有給（特別有給は別集計）
+  const regularRecords =
+    fiscalYear?.leaveRecords.filter((r) => r.type !== "special") ?? [];
+  const totalConsumed = regularRecords.reduce((sum, r) => sum + r.consumedDays, 0);
   const remaining = (fiscalYear?.grantedDays ?? 0) - totalConsumed;
 
-  // 種別ごとの集計
-  const typeBreakdown = fiscalYear?.leaveRecords.reduce(
+  // 種別ごとの集計（特別有給は通常集計から除外）
+  const typeBreakdown = regularRecords.reduce(
     (acc, r) => {
       acc[r.type as LeaveType] = (acc[r.type as LeaveType] ?? 0) + r.consumedDays;
       return acc;
@@ -168,6 +198,11 @@ export default function DashboardPage() {
           <h2 className="text-2xl font-bold text-slate-800">ダッシュボード</h2>
           <p className="text-sm text-slate-500 mt-0.5">
             {currentYear}年度（{currentYear}/4/1 〜 {currentYear + 1}/3/31）
+            {userInfo?.tenure && (
+              <span className="ml-2 text-blue-600 font-medium">
+                {userInfo.tenure.text}
+              </span>
+            )}
           </p>
         </div>
         <Link href="/register" className="btn-primary text-sm">
@@ -199,7 +234,11 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* サマリーカード */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div
+            className={`grid grid-cols-1 ${
+              userInfo?.specialLeave ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"
+            } gap-4`}
+          >
             <SummaryCard
               label="付与日数"
               value={fiscalYear.grantedDays}
@@ -211,17 +250,24 @@ export default function DashboardPage() {
               value={Number(totalConsumed.toFixed(2))}
               unit="日"
               color="border-orange-400"
-              sub={`${fiscalYear.leaveRecords.length} 件`}
+              sub={`${regularRecords.length} 件`}
             />
             <SummaryCard
               label="残日数"
               value={Number(remaining.toFixed(2))}
               unit="日"
-              color={
-                remaining <= 5 ? "border-red-400" : "border-green-400"
-              }
+              color={remaining <= 5 ? "border-red-400" : "border-green-400"}
               textColor={remaining <= 10 ? "text-red-500" : undefined}
             />
+            {userInfo?.specialLeave && (
+              <SummaryCard
+                label={`特別有給（${userInfo.specialLeave.milestone}周年）`}
+                value={Number(userInfo.specialLeave.remainingDays.toFixed(2))}
+                unit="日"
+                color="border-pink-400"
+                sub={`${userInfo.specialLeave.anniversaryStart} 〜 ${userInfo.specialLeave.anniversaryEnd}`}
+              />
+            )}
           </div>
 
           {/* 使用率バー */}

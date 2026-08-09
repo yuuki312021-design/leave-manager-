@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  calcSpecialLeaveInfo,
   getCurrentFiscalYear,
   LEAVE_TYPE_LABELS,
   type LeaveType,
@@ -12,6 +13,15 @@ interface FiscalYear {
   id: number;
   year: number;
   grantedDays: number;
+}
+
+interface Profile {
+  joinedAt: string | null;
+}
+
+interface SpecialRecord {
+  date: string;
+  consumedDays: number;
 }
 
 interface LeaveRow {
@@ -42,6 +52,8 @@ function createRow(today: string, fiscalYearId: string): LeaveRow {
 export default function RegisterPage() {
   const router = useRouter();
   const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [specialRecords, setSpecialRecords] = useState<SpecialRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -53,16 +65,29 @@ export default function RegisterPage() {
   const [rows, setRows] = useState<LeaveRow[]>([]);
 
   useEffect(() => {
-    fetch("/api/fiscal-years")
-      .then((r) => r.json())
-      .then((data: FiscalYear[]) => {
-        setFiscalYears(data);
-        const cur = data.find((f) => f.year === currentFY);
-        const fyId = cur ? String(cur.id) : data.length > 0 ? String(data[0].id) : "";
+    Promise.all([
+      fetch("/api/fiscal-years").then((r) => r.json()),
+      fetch("/api/profile").then((r) => r.json()),
+      fetch(`/api/leave-records?year=${currentFY}`).then((r) => r.json()),
+    ])
+      .then(([fyData, profileData, recordsData]: [FiscalYear[], Profile, { type: string; date: string; consumedDays: number }[]]) => {
+        setFiscalYears(fyData);
+        setProfile(profileData);
+        setSpecialRecords(
+          recordsData.filter((r) => r.type === "special").map((r) => ({ date: r.date, consumedDays: r.consumedDays }))
+        );
+        const cur = fyData.find((f) => f.year === currentFY);
+        const fyId = cur ? String(cur.id) : fyData.length > 0 ? String(fyData[0].id) : "";
         setRows([createRow(today, fyId)]);
       })
       .finally(() => setLoading(false));
   }, [currentFY, today]);
+
+  const specialLeave = profile?.joinedAt
+    ? calcSpecialLeaveInfo(profile.joinedAt, specialRecords)
+    : null;
+  const specialLeaveAvailable =
+    specialLeave?.isEligible && specialLeave.remainingDays > 0;
 
   // 年度を日付から自動解決
   const resolveFiscalYearId = (dateStr: string, currentFyId: string): string => {
@@ -267,9 +292,12 @@ export default function RegisterPage() {
                   <label className="label">
                     取得種別 <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {(Object.entries(LEAVE_TYPE_LABELS) as [LeaveType, string][]).map(
-                      ([value, label]) => (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {(
+                      Object.entries(LEAVE_TYPE_LABELS) as [LeaveType, string][]
+                    )
+                      .filter(([value]) => value !== "special")
+                      .map(([value, label]) => (
                         <label
                           key={value}
                           className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors text-sm ${
@@ -290,9 +318,37 @@ export default function RegisterPage() {
                             {label}
                           </span>
                         </label>
-                      )
-                    )}
+                      ))}
                   </div>
+                  {specialLeaveAvailable && (
+                    <label
+                      className={`mt-2 flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors text-sm ${
+                        row.type === "special"
+                          ? "border-pink-500 bg-pink-50"
+                          : "border-slate-200 hover:bg-slate-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name={`type-${row.id}`}
+                        value="special"
+                        checked={row.type === "special"}
+                        onChange={() => handleTypeChange(row.id, "special")}
+                        className="text-pink-600 shrink-0"
+                      />
+                      <span className="font-medium text-slate-700 leading-tight">
+                        {LEAVE_TYPE_LABELS.special}
+                      </span>
+                      <span className="ml-auto text-xs text-pink-600">
+                        残 {specialLeave?.remainingDays ?? 0}日
+                      </span>
+                    </label>
+                  )}
+                  {profile?.joinedAt && !specialLeaveAvailable && (
+                    <p className="text-xs text-slate-400 mt-2">
+                      現在、特別有給の取得対象期間ではありません
+                    </p>
+                  )}
                 </div>
 
                 {/* 時間給専用フィールド */}
