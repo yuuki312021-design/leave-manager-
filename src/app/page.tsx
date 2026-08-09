@@ -32,18 +32,20 @@ function SummaryCard({
   unit,
   color,
   sub,
+  textColor,
 }: {
   label: string;
   value: number;
   unit: string;
   color: string;
   sub?: string;
+  textColor?: string;
 }) {
   return (
     <div className={`card border-l-4 ${color}`}>
       <p className="text-sm text-slate-500 font-medium">{label}</p>
       <div className="mt-2 flex items-baseline gap-1">
-        <span className="text-3xl font-bold text-slate-800">{value}</span>
+        <span className={`text-3xl font-bold ${textColor ?? "text-slate-800"}`}>{value}</span>
         <span className="text-sm text-slate-500">{unit}</span>
       </div>
       {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
@@ -218,6 +220,7 @@ export default function DashboardPage() {
               color={
                 remaining <= 5 ? "border-red-400" : "border-green-400"
               }
+              textColor={remaining <= 10 ? "text-red-500" : undefined}
             />
           </div>
 
