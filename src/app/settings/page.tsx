@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { signOut } from "next-auth/react";
 import {
   calcSpecialLeaveInfo,
   calcTenure,
@@ -38,6 +39,13 @@ export default function SettingsPage() {
   const [newDays, setNewDays] = useState("");
   const [adding, setAdding] = useState(false);
 
+  // アカウント削除ダイアログ
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const deletePasswordRef = useRef<HTMLInputElement>(null);
+
   const loadData = () => {
     setLoading(true);
     Promise.all([
@@ -55,6 +63,13 @@ export default function SettingsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // ダイアログが開いたらパスワード欄にフォーカス
+  useEffect(() => {
+    if (deleteDialogOpen) {
+      setTimeout(() => deletePasswordRef.current?.focus(), 50);
+    }
+  }, [deleteDialogOpen]);
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,6 +159,43 @@ export default function SettingsPage() {
       setSuccess("削除しました");
     } else {
       setError("削除に失敗しました");
+    }
+  };
+
+  const openDeleteDialog = () => {
+    setDeletePassword("");
+    setDeleteError("");
+    setDeleteDialogOpen(true);
+  };
+
+  const closeDeleteDialog = () => {
+    if (deleting) return;
+    setDeleteDialogOpen(false);
+    setDeletePassword("");
+    setDeleteError("");
+  };
+
+  const handleAccountDelete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDeleteError("");
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: deletePassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDeleteError(data.error ?? "削除に失敗しました");
+      } else {
+        // セッションを終了してログインページへ
+        await signOut({ callbackUrl: "/login" });
+      }
+    } catch {
+      setDeleteError("通信エラーが発生しました");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -414,6 +466,90 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {/* アカウント削除セクション */}
+      <div className="card max-w-lg border-red-100">
+        <h3 className="font-semibold text-slate-700 mb-1">アカウント削除</h3>
+        <p className="text-sm text-slate-500 mb-4">
+          アカウントを削除すると、すべての有給データが完全に失われます。この操作は取り消せません。
+        </p>
+        <button
+          type="button"
+          onClick={openDeleteDialog}
+          className="text-sm font-medium text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors"
+        >
+          アカウントを削除する
+        </button>
+      </div>
+
+      {/* 削除確認ダイアログ */}
+      {deleteDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeDeleteDialog();
+          }}
+        >
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div>
+              <h4 className="text-lg font-bold text-slate-800">
+                アカウントを削除しますか？
+              </h4>
+              <p className="text-sm text-slate-500 mt-1">
+                この操作は取り消せません。すべての有給データ（取得履歴・年度設定）が完全に削除されます。
+              </p>
+            </div>
+
+            <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 text-sm text-red-700">
+              削除するとアカウントに二度とアクセスできなくなります。
+            </div>
+
+            <form onSubmit={handleAccountDelete} className="space-y-4">
+              <div>
+                <label className="label" htmlFor="deletePassword">
+                  現在のパスワードを入力して確認
+                </label>
+                <input
+                  id="deletePassword"
+                  ref={deletePasswordRef}
+                  type="password"
+                  required
+                  className="input-field"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="パスワード"
+                  disabled={deleting}
+                  autoComplete="current-password"
+                />
+              </div>
+
+              {deleteError && (
+                <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-lg">
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end flex-wrap">
+                <button
+                  type="button"
+                  onClick={closeDeleteDialog}
+                  disabled={deleting}
+                  className="btn-secondary"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="submit"
+                  disabled={deleting || !deletePassword}
+                  className="bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deleting ? "削除中..." : "削除する"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
