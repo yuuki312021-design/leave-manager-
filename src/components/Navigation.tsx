@@ -15,8 +15,13 @@ export default function Navigation() {
   const pathname = usePathname();
   const { data: session } = useSession();
 
-  // ログイン・登録ページではナビゲーションを非表示
-  if (pathname === "/login" || pathname === "/signup") return null;
+  // ログイン・登録・パスワードリセット関連ページではナビゲーションを非表示
+  if (
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname.startsWith("/auth/")
+  )
+    return null;
 
   return (
     <>
