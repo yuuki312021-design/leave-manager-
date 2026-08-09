@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 /** 今日の日付文字列 YYYY-MM-DD を返す（サーバー側） */
 function todayStr(): string {
@@ -16,33 +16,26 @@ function tomorrowStr(): string {
 
 /** メール送信ヘルパー */
 async function sendMail(to: string, subject: string, html: string) {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    console.warn("[notifications] SMTP設定が不完全なためメール送信をスキップします");
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("[notifications] RESEND_API_KEY が設定されていないためメール送信をスキップします");
     return;
   }
 
-  const smtpPort = Number(SMTP_PORT ?? 587);
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-    tls: {
-      rejectUnauthorized: false,
-    },
-  });
+  const from = process.env.NOTIFICATION_EMAIL || "onboarding@resend.dev";
+  const resend = new Resend(apiKey);
 
-  await transporter.sendMail({
-    from: SMTP_USER,
-    to,
-    subject,
-    html,
-  });
+  const { data, error } = await resend.emails.send({ from, to, subject, html });
+
+  if (error) {
+    console.error("[notifications] メール送信エラー:", {
+      name: error.name,
+      message: error.message,
+    });
+    throw new Error(`メール送信失敗: ${error.message}`);
+  }
+
+  console.log(`[notifications] メール送信成功: ${to} (id: ${data?.id})`);
 }
 
 /** 有給レコードを人間が読める形式に整形 */

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
@@ -36,34 +36,14 @@ export async function POST(request: NextRequest) {
 
     // パスワード再設定メールを送信
     const resetUrl = `https://leave-manager-zi78.onrender.com/auth/reset-password?token=${token}`;
-    const from = process.env.NOTIFICATION_EMAIL || process.env.SMTP_USER;
+    const from = process.env.NOTIFICATION_EMAIL || "onboarding@resend.dev";
 
     try {
-      const smtpPort = Number(process.env.SMTP_PORT) || 587;
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: smtpPort,
-        secure: smtpPort === 465,
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-        tls: {
-          rejectUnauthorized: false,
-        },
-      });
-
-      await transporter.sendMail({
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const { data, error } = await resend.emails.send({
         from,
         to: email,
         subject: "パスワード再設定のご案内",
-        text: [
-          "以下のリンクをクリックしてパスワードを再設定してください（有効期限: 1時間）:",
-          "",
-          resetUrl,
-          "",
-          "このメールに心当たりがない場合は無視してください。",
-        ].join("\n"),
         html: [
           "<p>以下のリンクをクリックしてパスワードを再設定してください（有効期限: 1時間）:</p>",
           `<p><a href="${resetUrl}">${resetUrl}</a></p>`,
@@ -71,16 +51,18 @@ export async function POST(request: NextRequest) {
         ].join(""),
       });
 
-      console.log(`[forgot-password] メール送信成功: ${email}`);
+      if (error) {
+        console.error("[forgot-password] メール送信エラー:", {
+          name: error.name,
+          message: error.message,
+        });
+      } else {
+        console.log(`[forgot-password] メール送信成功: ${email} (id: ${data?.id})`);
+      }
     } catch (mailError) {
-      // テスト環境対応: SMTP送信失敗時は500ではなく200を返す
-      const err = mailError as Error & { code?: string; command?: string; response?: string; responseCode?: number };
-      console.error("[forgot-password] メール送信エラー:", {
+      const err = mailError as Error;
+      console.error("[forgot-password] メール送信例外:", {
         message: err.message,
-        code: err.code,
-        command: err.command,
-        response: err.response,
-        responseCode: err.responseCode,
         stack: err.stack,
       });
     }
