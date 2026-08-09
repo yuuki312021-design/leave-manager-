@@ -18,7 +18,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { date, type, hours, note } = body;
+    const { date, type, hours, startTime, endTime, note } = body;
 
     if (!date || !type) {
       return NextResponse.json(
@@ -50,6 +50,8 @@ export async function PUT(
         date,
         type,
         hours: type === "hourly" ? Number(hours) : null,
+        startTime: type === "hourly" ? (startTime ?? null) : null,
+        endTime: type === "hourly" ? (endTime ?? null) : null,
         consumedDays,
         note: note ?? null,
       },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LEAVE_TYPE_SHORT, type LeaveType } from "@/lib/utils";
+import { LEAVE_TYPE_LABELS, LEAVE_TYPE_SHORT, type LeaveType } from "@/lib/utils";
 
 interface FiscalYear {
   id: number;
@@ -28,12 +28,217 @@ const TYPE_BADGE: Record<LeaveType, string> = {
   hourly: "bg-amber-100 text-amber-700",
 };
 
+// 編集フォームの状態
+interface EditForm {
+  date: string;
+  type: LeaveType;
+  hours: string;
+  startTime: string;
+  endTime: string;
+  note: string;
+}
+
+function EditModal({
+  record,
+  onClose,
+  onSaved,
+}: {
+  record: LeaveRecord;
+  onClose: () => void;
+  onSaved: (updated: LeaveRecord) => void;
+}) {
+  const [form, setForm] = useState<EditForm>({
+    date: record.date,
+    type: record.type as LeaveType,
+    hours: record.hours != null ? String(record.hours) : "",
+    startTime: record.startTime ?? "",
+    endTime: record.endTime ?? "",
+    note: record.note ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/leave-records/${record.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: form.date,
+          type: form.type,
+          hours: form.type === "hourly" ? Number(form.hours) : undefined,
+          startTime: form.type === "hourly" ? (form.startTime || null) : null,
+          endTime: form.type === "hourly" ? (form.endTime || null) : null,
+          note: form.note || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "保存に失敗しました");
+        return;
+      }
+      const updated = await res.json();
+      // APIレスポンスにfiscalYearが含まれない場合は既存値を引き継ぐ
+      onSaved({ ...record, ...updated, fiscalYear: updated.fiscalYear ?? record.fiscalYear });
+      onClose();
+    } catch {
+      setError("保存に失敗しました");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-slate-800">記録を編集</h3>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+            aria-label="閉じる"
+          >
+            ×
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* 取得日 */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              取得日 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              value={form.date}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              required
+              className="input-field w-full"
+            />
+          </div>
+
+          {/* 種別 */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              種別 <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={form.type}
+              onChange={(e) =>
+                setForm({ ...form, type: e.target.value as LeaveType, hours: "", startTime: "", endTime: "" })
+              }
+              className="input-field w-full"
+            >
+              {(Object.keys(LEAVE_TYPE_LABELS) as LeaveType[]).map((t) => (
+                <option key={t} value={t}>
+                  {LEAVE_TYPE_LABELS[t]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 時間給フィールド */}
+          {form.type === "hourly" && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  時間数（時間） <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={8}
+                  step={0.5}
+                  value={form.hours}
+                  onChange={(e) => setForm({ ...form, hours: e.target.value })}
+                  required
+                  className="input-field w-full"
+                  placeholder="例：2"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    開始時刻
+                  </label>
+                  <input
+                    type="time"
+                    value={form.startTime}
+                    onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+                    className="input-field w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    終了時刻
+                  </label>
+                  <input
+                    type="time"
+                    value={form.endTime}
+                    onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+                    className="input-field w-full"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* 備考 */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              備考
+            </label>
+            <input
+              type="text"
+              value={form.note}
+              onChange={(e) => setForm({ ...form, note: e.target.value })}
+              className="input-field w-full"
+              placeholder="任意"
+            />
+          </div>
+
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-3 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-secondary"
+              disabled={saving}
+            >
+              キャンセル
+            </button>
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={saving}
+            >
+              {saving ? "保存中..." : "保存"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function HistoryPage() {
   const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | "all">("all");
   const [records, setRecords] = useState<LeaveRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [editRecord, setEditRecord] = useState<LeaveRecord | null>(null);
 
   // 年度一覧取得
   useEffect(() => {
@@ -70,6 +275,10 @@ export default function HistoryPage() {
     setDeleteId(null);
   };
 
+  const handleSaved = (updated: LeaveRecord) => {
+    setRecords((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+  };
+
   // 年度ごとの消化合計
   const totalConsumed = records.reduce((sum, r) => sum + r.consumedDays, 0);
 
@@ -81,6 +290,14 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-6">
+      {editRecord && (
+        <EditModal
+          record={editRecord}
+          onClose={() => setEditRecord(null)}
+          onSaved={handleSaved}
+        />
+      )}
+
       <div>
         <h2 className="text-2xl font-bold text-slate-800">取得履歴</h2>
         <p className="text-sm text-slate-500 mt-0.5">年度別の有給取得一覧</p>
@@ -227,13 +444,21 @@ export default function HistoryPage() {
                       {record.note ?? "—"}
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => handleDelete(record.id)}
-                        className="btn-danger"
-                        disabled={deleteId === record.id}
-                      >
-                        削除
-                      </button>
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => setEditRecord(record)}
+                          className="btn-secondary"
+                        >
+                          編集
+                        </button>
+                        <button
+                          onClick={() => handleDelete(record.id)}
+                          className="btn-danger"
+                          disabled={deleteId === record.id}
+                        >
+                          削除
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -276,12 +501,20 @@ export default function HistoryPage() {
                             .replace(/\.?0+$/, "")}
                       日
                     </div>
-                    <button
-                      onClick={() => handleDelete(record.id)}
-                      className="btn-danger mt-1"
-                    >
-                      削除
-                    </button>
+                    <div className="flex flex-col gap-1 mt-1">
+                      <button
+                        onClick={() => setEditRecord(record)}
+                        className="btn-secondary"
+                      >
+                        編集
+                      </button>
+                      <button
+                        onClick={() => handleDelete(record.id)}
+                        className="btn-danger"
+                      >
+                        削除
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
