@@ -4,18 +4,18 @@ services:
     env: node
     region: singapore
     plan: free
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --legacy-peer-deps && npm run build
     startCommand: npm run start
     envVars:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        value: file:/opt/render/project/data/prod.db
+        value: file:./prisma/dev.db
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
       - key: NEXTAUTH_URL
         sync: false
       - key: NEXTAUTH_SECRET
         generateValue: true
-    disk:
-      name: sqlite-data
-      mountPath: /opt/render/project/data
-      sizeGB: 1
