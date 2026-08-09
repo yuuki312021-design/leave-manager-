@@ -39,13 +39,17 @@ export async function POST(request: NextRequest) {
     const from = process.env.NOTIFICATION_EMAIL || process.env.SMTP_USER;
 
     try {
+      const smtpPort = Number(process.env.SMTP_PORT) || 587;
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT) || 587,
-        secure: Number(process.env.SMTP_PORT) === 465,
+        port: smtpPort,
+        secure: smtpPort === 465,
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
+        },
+        tls: {
+          rejectUnauthorized: false,
         },
       });
 
@@ -66,9 +70,19 @@ export async function POST(request: NextRequest) {
           "<p>このメールに心当たりがない場合は無視してください。</p>",
         ].join(""),
       });
+
+      console.log(`[forgot-password] メール送信成功: ${email}`);
     } catch (mailError) {
       // テスト環境対応: SMTP送信失敗時は500ではなく200を返す
-      console.error("[forgot-password] メール送信エラー:", mailError);
+      const err = mailError as Error & { code?: string; command?: string; response?: string; responseCode?: number };
+      console.error("[forgot-password] メール送信エラー:", {
+        message: err.message,
+        code: err.code,
+        command: err.command,
+        response: err.response,
+        responseCode: err.responseCode,
+        stack: err.stack,
+      });
     }
 
     return successResponse;

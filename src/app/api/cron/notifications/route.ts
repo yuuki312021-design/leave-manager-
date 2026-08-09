@@ -23,13 +23,17 @@ async function sendMail(to: string, subject: string, html: string) {
     return;
   }
 
+  const smtpPort = Number(SMTP_PORT ?? 587);
   const transporter = nodemailer.createTransport({
     host: SMTP_HOST,
-    port: Number(SMTP_PORT ?? 587),
-    secure: Number(SMTP_PORT ?? 587) === 465,
+    port: smtpPort,
+    secure: smtpPort === 465,
     auth: {
       user: SMTP_USER,
       pass: SMTP_PASS,
+    },
+    tls: {
+      rejectUnauthorized: false,
     },
   });
 
