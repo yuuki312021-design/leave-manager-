@@ -43,10 +43,11 @@ export async function POST(request: NextRequest) {
       const { data, error } = await resend.emails.send({
         from,
         to: email,
-        subject: "パスワード再設定のご案内",
+        subject: "【有給休暇管理】パスワード再設定のご案内",
         html: [
-          "<p>以下のリンクをクリックしてパスワードを再設定してください（有効期限: 1時間）:</p>",
-          `<p><a href="${resetUrl}">${resetUrl}</a></p>`,
+          "<p>有給休暇管理アプリ（Leave Manager）のパスワード再設定を受け付けました。</p>",
+          "<p>以下のリンクをクリックして、有給休暇管理アプリのパスワードを再設定してください（有効期限: 1時間）:</p>",
+          `<p><a href="${resetUrl}">パスワードを再設定する</a></p>`,
           "<p>このメールに心当たりがない場合は無視してください。</p>",
         ].join(""),
       });
