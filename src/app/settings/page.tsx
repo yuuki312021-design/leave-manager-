@@ -7,6 +7,7 @@ import {
   calcTenure,
   getCurrentFiscalYear,
 } from "@/lib/utils";
+import PushNotificationManager from "@/components/PushNotificationManager";
 
 interface FiscalYear {
   id: number;
@@ -34,6 +35,13 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // 通知設定
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [reminderTime, setReminderTime] = useState("09:00");
+  const [notifSaving, setNotifSaving] = useState(false);
+  const [notifError, setNotifError] = useState("");
+  const [notifSuccess, setNotifSuccess] = useState("");
+
   // 新規年度追加フォーム
   const [newYear, setNewYear] = useState(String(getCurrentFiscalYear()));
   const [newDays, setNewDays] = useState("");
@@ -51,11 +59,16 @@ export default function SettingsPage() {
     Promise.all([
       fetch("/api/fiscal-years").then((r) => r.json()),
       fetch("/api/profile").then((r) => r.json()),
+      fetch("/api/push/status").then((r) => r.json()),
     ])
-      .then(([fyData, profileData]: [FiscalYear[], Profile]) => {
+      .then(([fyData, profileData, pushData]: [FiscalYear[], Profile, { pushEnabled: boolean; reminderTime: string }]) => {
         setFiscalYears(fyData);
         setProfile(profileData);
         setJoinedAt(profileData.joinedAt ?? "");
+        if (pushData && !pushData.hasOwnProperty("error")) {
+          setPushEnabled(pushData.pushEnabled ?? false);
+          setReminderTime(pushData.reminderTime ?? "09:00");
+        }
       })
       .finally(() => setLoading(false));
   };
@@ -70,6 +83,30 @@ export default function SettingsPage() {
       setTimeout(() => deletePasswordRef.current?.focus(), 50);
     }
   }, [deleteDialogOpen]);
+
+  const handleNotifSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setNotifError("");
+    setNotifSuccess("");
+    setNotifSaving(true);
+    try {
+      const res = await fetch("/api/user/notification-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pushEnabled, reminderTime }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setNotifError(data.error ?? "保存に失敗しました");
+      } else {
+        setNotifSuccess("通知設定を保存しました");
+      }
+    } catch {
+      setNotifError("通信エラー");
+    } finally {
+      setNotifSaving(false);
+    }
+  };
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -262,6 +299,79 @@ export default function SettingsPage() {
             className="btn-primary"
           >
             {profileSaving ? "保存中..." : "プロフィールを保存"}
+          </button>
+        </form>
+      </div>
+
+      {/* プッシュ通知設定 */}
+      <div className="card max-w-lg">
+        <h3 className="font-semibold text-slate-700 mb-4">プッシュ通知</h3>
+        <form onSubmit={handleNotifSave} className="space-y-4">
+          {/* ON/OFFトグル */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-700">通知を有効にする</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                有給取得前日・当日にリマインダーを受信します
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={pushEnabled}
+              onClick={() => setPushEnabled((v) => !v)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                pushEnabled ? "bg-blue-600" : "bg-slate-200"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  pushEnabled ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* 通知時刻 */}
+          <div>
+            <label className="label" htmlFor="reminderTime">
+              通知時刻
+            </label>
+            <input
+              id="reminderTime"
+              type="time"
+              className="input-field w-36"
+              value={reminderTime}
+              onChange={(e) => setReminderTime(e.target.value)}
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              有給取得前日の指定時刻に通知が届きます
+            </p>
+          </div>
+
+          {/* 購読管理 */}
+          <div>
+            <p className="text-sm font-medium text-slate-700 mb-2">この端末の購読状態</p>
+            <PushNotificationManager />
+          </div>
+
+          {notifError && (
+            <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-lg">
+              {notifError}
+            </div>
+          )}
+          {notifSuccess && (
+            <div className="bg-green-50 text-green-600 text-sm px-4 py-3 rounded-lg">
+              {notifSuccess}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={notifSaving}
+            className="btn-primary"
+          >
+            {notifSaving ? "保存中..." : "通知設定を保存"}
           </button>
         </form>
       </div>

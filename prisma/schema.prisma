@@ -12,16 +12,32 @@ datasource db {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  email        String        @unique
-  passwordHash String
-  name         String
-  joinedAt     DateTime?     @map("joined_at") // 入社日
-  createdAt    DateTime      @default(now())
-  fiscalYears  FiscalYear[]
-  leaveRecords LeaveRecord[]
+  id                Int                @id @default(autoincrement())
+  email             String             @unique
+  passwordHash      String
+  name              String
+  joinedAt          DateTime?          @map("joined_at") // 入社日
+  reminderTime      String             @default("09:00") // 通知時刻 HH:MM
+  pushEnabled       Boolean            @default(false)   // プッシュ通知ON/OFF
+  createdAt         DateTime           @default(now())
+  fiscalYears       FiscalYear[]
+  leaveRecords      LeaveRecord[]
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("push_subscriptions")
 }
 
 model FiscalYear {
