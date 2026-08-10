@@ -128,7 +128,7 @@ function calcElapsedYearsMonths(
   return { years: Math.max(0, years), months: Math.max(0, months) };
 }
 
-/** 入社月を1か月目として勤続年数・月数を計算 */
+/** 入社月を0年1か月目として勤続年数・月数を計算 */
 export function calcTenure(
   joinedAtStr: string,
   now: Date = new Date()
@@ -136,10 +136,10 @@ export function calcTenure(
   const elapsed = calcElapsedYearsMonths(joinedAtStr, now);
   if (!elapsed) return null;
 
-  // 経過月数（0ベース）から入社月を1か月目とする1ベースの勤続年数・月数に変換
+  // 経過月数（0ベース）: 入社月 = 0年1か月目
   const totalMonths = elapsed.years * 12 + elapsed.months;
-  const years = Math.floor(totalMonths / 12) + 1;
-  const months = totalMonths % 12 + 1;
+  const years = Math.floor(totalMonths / 12);
+  const months = (totalMonths % 12) + 1;
 
   return {
     years,
