@@ -23,3 +23,27 @@ services:
         sync: false
       - key: NOTIFICATION_EMAIL
         sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+
+  - type: cron
+    name: leave-manager-notifications
+    env: node
+    region: singapore
+    schedule: "0 * * * *"
+    buildCommand: ""
+    startCommand: >-
+      curl -sf -X GET
+      -H "Authorization: Bearer $CRON_SECRET"
+      "$NEXTAUTH_URL/api/cron/notifications"
+    envVars:
+      - key: NEXTAUTH_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false

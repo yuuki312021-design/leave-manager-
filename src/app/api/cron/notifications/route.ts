@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Resend } from "resend";
+import { runPushNotifications } from "@/lib/notification-scheduler";
 
 /** 今日の日付文字列 YYYY-MM-DD を返す（サーバー側） */
 function todayStr(): string {
@@ -148,12 +149,21 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // ── プッシュ通知送信 ──────────────────────────────────
+    let pushResult = { usersProcessed: 0, notificationsSent: 0, errors: 0 };
+    try {
+      pushResult = await runPushNotifications();
+    } catch (pushError) {
+      console.error("[notifications] プッシュ通知エラー:", pushError);
+    }
+
     return NextResponse.json({
       ok: true,
       today,
       tomorrow,
       sentDaybefore,
       sentDayof,
+      push: pushResult,
     });
   } catch (error) {
     console.error("[notifications] エラー:", error);
