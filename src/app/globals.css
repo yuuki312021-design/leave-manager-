@@ -7,16 +7,34 @@
   --foreground: #1e293b;
 }
 
+html {
+  background-image: url('/background.jpg');
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 body {
-  background-color: var(--background);
+  position: relative;
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP",
     sans-serif;
 }
 
+/* 半透明の黒オーバーレイ（背景を暗くして可読性を確保） */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: -1;
+  pointer-events: none;
+}
+
 @layer components {
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6;
+    @apply bg-white/95 rounded-xl shadow-sm border border-slate-200 p-4 md:p-6;
   }
   .btn-primary {
     @apply bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed;

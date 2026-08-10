@@ -26,7 +26,7 @@ export default function Navigation() {
   return (
     <>
       {/* デスクトップ用サイドバー */}
-      <aside className="hidden md:flex flex-col w-56 bg-white border-r border-slate-200 min-h-screen fixed left-0 top-0">
+      <aside className="hidden md:flex flex-col w-56 bg-white/95 backdrop-blur-sm border-r border-slate-200 min-h-screen fixed left-0 top-0">
         <div className="px-5 py-5 border-b border-slate-200">
           <h1 className="text-lg font-bold text-slate-800">有給管理</h1>
           <p className="text-xs text-slate-500 mt-0.5">Leave Manager</p>
@@ -76,7 +76,7 @@ export default function Navigation() {
       </aside>
 
       {/* モバイル用ボトムナビ */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 z-50">
         <div className="flex">
           {navItems.map((item) => {
             const isActive = pathname === item.href;

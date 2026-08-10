@@ -38,11 +38,11 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+    <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-slate-800">有給管理</h1>
-          <p className="text-sm text-slate-500 mt-1">Leave Manager</p>
+          <h1 className="text-2xl font-bold text-white drop-shadow">有給管理</h1>
+          <p className="text-sm text-slate-200 mt-1">Leave Manager</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
