@@ -22,6 +22,36 @@ export function calcHourlyLeaveHours(
     .reduce((sum, r) => sum + (r.hours ?? 0), 0);
 }
 
+/** 年間5日有給取得義務 */
+export const MANDATORY_LEAVE_DAYS = 5;
+
+/**
+ * 年5日取得義務の対象取得日数を計算（special は対象外）
+ * full=1日、am_half/pm_half=0.5日、hourly=hours/8日
+ */
+export function calcMandatoryLeaveDays(
+  records: { type: string; hours?: number | null; fiscalYearId?: number }[],
+  fiscalYearId?: number
+): number {
+  const filtered =
+    fiscalYearId !== undefined
+      ? records.filter((r) => r.fiscalYearId === fiscalYearId)
+      : records;
+  return filtered.reduce((sum, r) => {
+    switch (r.type) {
+      case "full":
+        return sum + 1;
+      case "am_half":
+      case "pm_half":
+        return sum + 0.5;
+      case "hourly":
+        return sum + (r.hours ?? 0) / 8;
+      default:
+        return sum;
+    }
+  }, 0);
+}
+
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   full: "全休（1日）",
   am_half: "午前半休（0.5日）",

@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  calcMandatoryLeaveDays,
   calcSpecialLeaveInfo,
   getCurrentFiscalYear,
   HALF_DAY_LEAVE_ANNUAL_LIMIT,
   HOURLY_LEAVE_ANNUAL_LIMIT,
+  MANDATORY_LEAVE_DAYS,
   LEAVE_TYPE_LABELS,
   type LeaveType,
 } from "@/lib/utils";
@@ -66,6 +68,7 @@ export default function RegisterPage() {
   const [specialRecords, setSpecialRecords] = useState<SpecialRecord[]>([]);
   const [halfDayCountByFYId, setHalfDayCountByFYId] = useState<Record<number, number>>({});
   const [hourlyHoursByFYId, setHourlyHoursByFYId] = useState<Record<number, number>>({});
+  const [mandatoryDaysByFYId, setMandatoryDaysByFYId] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -107,6 +110,13 @@ export default function RegisterPage() {
         });
         setHourlyHoursByFYId(hourlyByFY);
 
+        // 年度ごとの年5日取得義務の取得日数を集計
+        const mandatoryByFY: Record<number, number> = {};
+        fyData.forEach((fy) => {
+          mandatoryByFY[fy.id] = calcMandatoryLeaveDays(recordsData, fy.id);
+        });
+        setMandatoryDaysByFYId(mandatoryByFY);
+
         const cur = fyData.find((f) => f.year === currentFY);
         const fyId = cur ? String(cur.id) : fyData.length > 0 ? String(fyData[0].id) : "";
         setRows([createRow(today, fyId)]);
@@ -119,6 +129,12 @@ export default function RegisterPage() {
     : null;
   const specialLeaveAvailable =
     specialLeave?.isEligible && specialLeave.remainingDays > 0;
+
+  // 今年度の年5日取得義務の状況
+  const currentFYData = fiscalYears.find((f) => f.year === currentFY);
+  const mandatoryTakenCurrentFY = currentFYData ? (mandatoryDaysByFYId[currentFYData.id] ?? 0) : 0;
+  const mandatoryRemainingCurrentFY = Math.max(0, MANDATORY_LEAVE_DAYS - mandatoryTakenCurrentFY);
+  const isMandatoryMetCurrentFY = mandatoryTakenCurrentFY >= MANDATORY_LEAVE_DAYS;
 
   // 年度を日付から自動解決
   const resolveFiscalYearId = (dateStr: string, currentFyId: string): string => {
@@ -325,6 +341,29 @@ export default function RegisterPage() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* 今年度の年5日取得義務 進捗バナー */}
+          {currentFYData && (
+            <div className={`max-w-2xl flex items-center gap-2 text-sm px-4 py-2.5 rounded-lg border ${
+              isMandatoryMetCurrentFY
+                ? "bg-green-50 text-green-700 border-green-200"
+                : "bg-orange-50 text-orange-700 border-orange-200"
+            }`}>
+              <span>今年度取得日数:</span>
+              <span className="font-semibold">
+                {mandatoryTakenCurrentFY % 1 === 0
+                  ? mandatoryTakenCurrentFY
+                  : mandatoryTakenCurrentFY.toFixed(3).replace(/\.?0+$/, "")} 日 / {MANDATORY_LEAVE_DAYS} 日
+              </span>
+              {!isMandatoryMetCurrentFY && (
+                <span>
+                  （あと{mandatoryRemainingCurrentFY % 1 === 0
+                    ? mandatoryRemainingCurrentFY
+                    : mandatoryRemainingCurrentFY.toFixed(3).replace(/\.?0+$/, "")}日）
+                </span>
+              )}
+              {isMandatoryMetCurrentFY && <span>（達成）</span>}
+            </div>
+          )}
           {rows.map((row, index) => {
             const fyId = Number(row.fiscalYearId);
             const halfUsed = halfDayCountByFYId[fyId] ?? 0;

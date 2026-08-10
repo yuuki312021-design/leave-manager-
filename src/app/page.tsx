@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  calcMandatoryLeaveDays,
   getCurrentFiscalYear,
   HALF_DAY_LEAVE_ANNUAL_LIMIT,
   HOURLY_LEAVE_ANNUAL_LIMIT,
+  MANDATORY_LEAVE_DAYS,
   LEAVE_TYPE_SHORT,
   type LeaveType,
 } from "@/lib/utils";
@@ -133,6 +135,7 @@ export default function DashboardPage() {
   const [tomorrowRecords, setTomorrowRecords] = useState<LeaveRecord[]>([]);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [hourlyHoursTotal, setHourlyHoursTotal] = useState(0);
+  const [mandatoryDaysTaken, setMandatoryDaysTaken] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -157,6 +160,9 @@ export default function DashboardPage() {
           .filter((r) => r.type === "hourly")
           .reduce((sum, r) => sum + (r.hours ?? 0), 0);
         setHourlyHoursTotal(hourlyTotal);
+
+        // 年5日取得義務の取得日数を集計
+        setMandatoryDaysTaken(calcMandatoryLeaveDays(records));
 
         // 今日・明日の予定を抽出（特別有給も含む）
         const today = todayStr();
@@ -186,6 +192,10 @@ export default function DashboardPage() {
 
   // 時間給取得時間と残り
   const hourlyHoursRemaining = Math.max(0, HOURLY_LEAVE_ANNUAL_LIMIT - hourlyHoursTotal);
+
+  // 年5日取得義務の残り日数
+  const mandatoryRemainingDays = Math.max(0, MANDATORY_LEAVE_DAYS - mandatoryDaysTaken);
+  const isMandatoryMet = mandatoryDaysTaken >= MANDATORY_LEAVE_DAYS;
 
   // 種別ごとの集計（特別有給は通常集計から除外）
   const typeBreakdown = regularRecords.reduce(
@@ -254,7 +264,7 @@ export default function DashboardPage() {
           {/* サマリーカード */}
           <div
             className={`grid grid-cols-1 ${
-              userInfo?.specialLeave ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"
+              userInfo?.specialLeave ? "sm:grid-cols-2 lg:grid-cols-5" : "sm:grid-cols-2 lg:grid-cols-4"
             } gap-4`}
           >
             <SummaryCard
@@ -286,6 +296,16 @@ export default function DashboardPage() {
                 sub={`${userInfo.specialLeave.anniversaryStart} 〜 ${userInfo.specialLeave.anniversaryEnd}`}
               />
             )}
+            <SummaryCard
+              label="年5日取得義務"
+              value={mandatoryDaysTaken % 1 === 0 ? mandatoryDaysTaken : parseFloat(mandatoryDaysTaken.toFixed(3))}
+              unit="日"
+              color={isMandatoryMet ? "border-green-400" : mandatoryDaysTaken >= MANDATORY_LEAVE_DAYS / 2 ? "border-orange-400" : "border-red-400"}
+              textColor={isMandatoryMet ? "text-green-600" : mandatoryDaysTaken >= MANDATORY_LEAVE_DAYS / 2 ? "text-orange-500" : "text-red-500"}
+              sub={isMandatoryMet
+                ? `/ ${MANDATORY_LEAVE_DAYS}日（達成）`
+                : `/ ${MANDATORY_LEAVE_DAYS}日（あと${mandatoryRemainingDays % 1 === 0 ? mandatoryRemainingDays : parseFloat(mandatoryRemainingDays.toFixed(3))}日）`}
+            />
           </div>
 
           {/* 使用率バー */}
