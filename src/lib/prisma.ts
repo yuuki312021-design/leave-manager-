@@ -9,6 +9,7 @@ function createPrismaClient(): PrismaClient {
   const tursoAuthToken = process.env.TURSO_AUTH_TOKEN;
 
   if (tursoUrl) {
+    console.log("[prisma] Connecting to Turso DB:", tursoUrl.replace(/\/\/[^/]+/, "//***"));
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { createClient } = require("@libsql/client") as typeof import("@libsql/client");
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -21,6 +22,7 @@ function createPrismaClient(): PrismaClient {
     });
   }
 
+  console.warn("[prisma] TURSO_DATABASE_URL not set – falling back to local SQLite:", process.env.DATABASE_URL);
   return new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
