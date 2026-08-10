@@ -6,6 +6,7 @@ import {
   calcSpecialLeaveInfo,
   getCurrentFiscalYear,
   HALF_DAY_LEAVE_ANNUAL_LIMIT,
+  HOURLY_LEAVE_ANNUAL_LIMIT,
   LEAVE_TYPE_LABELS,
   type LeaveType,
 } from "@/lib/utils";
@@ -30,6 +31,7 @@ interface LeaveRecordBasic {
   date: string;
   consumedDays: number;
   fiscalYearId: number;
+  hours?: number | null;
 }
 
 interface LeaveRow {
@@ -63,6 +65,7 @@ export default function RegisterPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [specialRecords, setSpecialRecords] = useState<SpecialRecord[]>([]);
   const [halfDayCountByFYId, setHalfDayCountByFYId] = useState<Record<number, number>>({});
+  const [hourlyHoursByFYId, setHourlyHoursByFYId] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -94,6 +97,15 @@ export default function RegisterPage() {
           }
         });
         setHalfDayCountByFYId(halfByFY);
+
+        // 年度ごとの時間給取得時間を集計
+        const hourlyByFY: Record<number, number> = {};
+        recordsData.forEach((r) => {
+          if (r.type === "hourly") {
+            hourlyByFY[r.fiscalYearId] = (hourlyByFY[r.fiscalYearId] ?? 0) + (r.hours ?? 0);
+          }
+        });
+        setHourlyHoursByFYId(hourlyByFY);
 
         const cur = fyData.find((f) => f.year === currentFY);
         const fyId = cur ? String(cur.id) : fyData.length > 0 ? String(fyData[0].id) : "";
@@ -220,6 +232,26 @@ export default function RegisterPage() {
       }
     }
 
+    // 時間給の年度上限チェック（フロントエンド、複数行一括送信を考慮）
+    const hourlyInSubmit: Record<string, number> = {};
+    for (const row of rows) {
+      if (row.type === "hourly") {
+        hourlyInSubmit[row.fiscalYearId] = (hourlyInSubmit[row.fiscalYearId] ?? 0) + parseFloat(row.hours || "0");
+      }
+    }
+    for (const [fyIdStr, addedHours] of Object.entries(hourlyInSubmit)) {
+      const fyId = Number(fyIdStr);
+      const existing = hourlyHoursByFYId[fyId] ?? 0;
+      if (existing + addedHours > HOURLY_LEAVE_ANNUAL_LIMIT) {
+        const fy = fiscalYears.find((f) => f.id === fyId);
+        setError(
+          `${fy ? fy.year + "年度" : "選択年度"}の時間給が年間上限（${HOURLY_LEAVE_ANNUAL_LIMIT}時間）を超えます（取得済み ${existing} 時間 + 今回 ${addedHours} 時間 = ${existing + addedHours} 時間）`
+        );
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
       // 1件ずつループで登録
       const results: unknown[] = [];
@@ -298,6 +330,8 @@ export default function RegisterPage() {
             const halfUsed = halfDayCountByFYId[fyId] ?? 0;
             const halfRemaining = HALF_DAY_LEAVE_ANNUAL_LIMIT - halfUsed;
             const isHalfType = row.type === "am_half" || row.type === "pm_half";
+            const hourlyUsed = hourlyHoursByFYId[fyId] ?? 0;
+            const hourlyRemaining = HOURLY_LEAVE_ANNUAL_LIMIT - hourlyUsed;
 
             return (
               <div key={row.id} className="card max-w-2xl">
@@ -458,6 +492,12 @@ export default function RegisterPage() {
                         )}
                       </div>
                     </div>
+                  )}
+                  {/* 時間給残り時間表示 */}
+                  {row.type === "hourly" && (
+                    <p className={`text-xs mt-1 font-medium ${hourlyRemaining <= 0 ? "text-red-500" : hourlyRemaining <= 5 ? "text-orange-500" : "text-amber-600"}`}>
+                      今年度残り {Math.max(0, hourlyRemaining)} 時間（取得済み {hourlyUsed} 時間 / 上限 {HOURLY_LEAVE_ANNUAL_LIMIT} 時間）
+                    </p>
                   )}
 
                   {/* 年度 */}

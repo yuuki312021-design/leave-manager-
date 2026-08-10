@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   getCurrentFiscalYear,
   HALF_DAY_LEAVE_ANNUAL_LIMIT,
+  HOURLY_LEAVE_ANNUAL_LIMIT,
   LEAVE_TYPE_SHORT,
   type LeaveType,
 } from "@/lib/utils";
@@ -131,6 +132,7 @@ export default function DashboardPage() {
   const [todayRecords, setTodayRecords] = useState<LeaveRecord[]>([]);
   const [tomorrowRecords, setTomorrowRecords] = useState<LeaveRecord[]>([]);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [hourlyHoursTotal, setHourlyHoursTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -149,6 +151,12 @@ export default function DashboardPage() {
         setFiscalYear(current);
         setRecentRecords(records.slice(0, 5));
         setUserInfo(userData);
+
+        // 時間給の合計時間を集計
+        const hourlyTotal = records
+          .filter((r) => r.type === "hourly")
+          .reduce((sum, r) => sum + (r.hours ?? 0), 0);
+        setHourlyHoursTotal(hourlyTotal);
 
         // 今日・明日の予定を抽出（特別有給も含む）
         const today = todayStr();
@@ -175,6 +183,9 @@ export default function DashboardPage() {
     (r) => r.type === "am_half" || r.type === "pm_half"
   ).length;
   const halfDayRemaining = Math.max(0, HALF_DAY_LEAVE_ANNUAL_LIMIT - halfDayCount);
+
+  // 時間給取得時間と残り
+  const hourlyHoursRemaining = Math.max(0, HOURLY_LEAVE_ANNUAL_LIMIT - hourlyHoursTotal);
 
   // 種別ごとの集計（特別有給は通常集計から除外）
   const typeBreakdown = regularRecords.reduce(
@@ -332,6 +343,16 @@ export default function DashboardPage() {
                     <span>/</span>
                     <span>{HALF_DAY_LEAVE_ANNUAL_LIMIT} 回 上限</span>
                     <span className="ml-1">（残り {halfDayRemaining} 回）</span>
+                  </div>
+                )}
+                {/* 時間給取得時間 */}
+                {hourlyHoursTotal > 0 && (
+                  <div className={`mt-2 text-xs flex items-center gap-1.5 ${hourlyHoursRemaining === 0 ? "text-red-500" : hourlyHoursRemaining <= 5 ? "text-orange-500" : "text-slate-500"}`}>
+                    <span>時間給取得時間:</span>
+                    <span className="font-semibold">{hourlyHoursTotal} 時間</span>
+                    <span>/</span>
+                    <span>{HOURLY_LEAVE_ANNUAL_LIMIT} 時間 上限</span>
+                    <span className="ml-1">（残り {hourlyHoursRemaining} 時間）</span>
                   </div>
                 )}
               </div>

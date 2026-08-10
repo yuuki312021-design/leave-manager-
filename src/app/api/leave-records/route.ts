@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { calcConsumedDays, calcSpecialLeaveInfo, HALF_DAY_LEAVE_ANNUAL_LIMIT, type LeaveType } from "@/lib/utils";
+import { calcConsumedDays, calcSpecialLeaveInfo, HALF_DAY_LEAVE_ANNUAL_LIMIT, HOURLY_LEAVE_ANNUAL_LIMIT, type LeaveType } from "@/lib/utils";
 
 // GET /api/leave-records?year=2024
 export async function GET(request: NextRequest) {
@@ -87,6 +87,28 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error: `半休の年間取得上限（${HALF_DAY_LEAVE_ANNUAL_LIMIT}回）に達しています（現在 ${halfCount} 回取得済み）`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 時間給の年度取得上限チェック（40時間/年度）
+    if (type === "hourly") {
+      const hourlyAgg = await prisma.leaveRecord.aggregate({
+        where: {
+          userId,
+          fiscalYearId: Number(fiscalYearId),
+          type: "hourly",
+        },
+        _sum: { hours: true },
+      });
+      const usedHours = hourlyAgg._sum.hours ?? 0;
+      const newHours = Number(hours);
+      if (usedHours + newHours > HOURLY_LEAVE_ANNUAL_LIMIT) {
+        return NextResponse.json(
+          {
+            error: `時間給の年間取得上限（${HOURLY_LEAVE_ANNUAL_LIMIT}時間）を超えます（取得済み ${usedHours} 時間 + 今回 ${newHours} 時間 = ${usedHours + newHours} 時間）`,
           },
           { status: 400 }
         );

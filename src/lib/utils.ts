@@ -10,6 +10,18 @@ export function calcHalfDayLeaveCount(records: { type: string }[]): number {
   ).length;
 }
 
+/** 年度ごとの時間給取得上限時間（5日相当） */
+export const HOURLY_LEAVE_ANNUAL_LIMIT = 40;
+
+/** 時間給の合計取得時間を計算 */
+export function calcHourlyLeaveHours(
+  records: { type: string; hours?: number | null }[]
+): number {
+  return records
+    .filter((r) => r.type === "hourly")
+    .reduce((sum, r) => sum + (r.hours ?? 0), 0);
+}
+
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   full: "全休（1日）",
   am_half: "午前半休（0.5日）",
