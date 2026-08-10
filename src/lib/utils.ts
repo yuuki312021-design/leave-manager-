@@ -5,7 +5,7 @@ export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   am_half: "午前半休（0.5日）",
   pm_half: "午後半休（0.5日）",
   hourly: "時間給",
-  special: "特別有給休暇（1日）",
+  special: "特別有給休暇（2日）",
 };
 
 export const LEAVE_TYPE_SHORT: Record<LeaveType, string> = {
@@ -95,7 +95,7 @@ export interface SpecialLeaveInfo {
 
 /**
  * 特別有給休暇の情報を計算する。
- * 入社5年・10年・15年…の周年を迎えた時点から1年間（周年年度）に1日付与され、
+ * 入社5年・10年・15年…の周年を迎えた時点から1年間（周年年度）に2日付与され、
  * 翌周年に繰り越すことはできない。
  */
 export function calcSpecialLeaveInfo(
@@ -122,7 +122,7 @@ export function calcSpecialLeaveInfo(
     .filter((r) => r.date >= startStr && r.date <= endStr)
     .reduce((sum, r) => sum + r.consumedDays, 0);
 
-  const grantedDays = 1;
+  const grantedDays = 2;
   return {
     milestone,
     anniversaryStart: startStr,
