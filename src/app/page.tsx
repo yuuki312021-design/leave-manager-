@@ -149,14 +149,10 @@ function MandatoryLeaveBanner({
   return (
     <div className="rounded-xl border-l-4 border-red-500 bg-red-50 shadow-sm p-4 flex items-start gap-3">
       <span className="text-red-500 text-lg leading-none mt-0.5">⚠️</span>
-      <div>
-        <p className="text-sm font-semibold text-red-700">
-          2月末までに法定有給{required}日の取得が必要です
-        </p>
-        <p className="text-xs text-red-600 mt-0.5">
-          現在{takenDisplay}日取得済み（あと{remainingDisplay}日）
-        </p>
-      </div>
+      <p className="text-sm font-semibold text-red-700">
+        2月末までに法定有給{required}日の取得が必要です。現在{takenDisplay}日取得済み
+        {remaining > 0 && `（あと${remainingDisplay}日取得してください）`}
+      </p>
     </div>
   );
 }
