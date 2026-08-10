@@ -131,7 +131,7 @@ export function calcTenure(
   return {
     years,
     months,
-    text: `入社${years}年${months}ヶ月`,
+    text: `入社${years}年${months}ヶ月目`,
   };
 }
 

@@ -245,7 +245,7 @@ export default function SettingsPage() {
             <div className="text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
               勤続年数:{" "}
               <strong className="text-slate-800">
-                {tenure.years}年{tenure.months}か月
+                {tenure.years}年{tenure.months}か月目
               </strong>
             </div>
           )}
