@@ -330,7 +330,7 @@ export default function DashboardPage() {
               label="残日数"
               value={Number(remaining.toFixed(2))}
               unit="日"
-              color={remaining <= 5 ? "border-red-400" : "border-green-400"}
+              color={remaining <= 10 ? "border-red-400" : "border-green-400"}
               textColor={remaining <= 10 ? "text-red-500" : undefined}
             />
             {userInfo?.specialLeave && (
@@ -363,7 +363,7 @@ export default function DashboardPage() {
             <div className="w-full bg-slate-100 rounded-full h-3">
               <div
                 className={`h-3 rounded-full transition-all ${
-                  usageRate >= 80
+                  remaining <= 10
                     ? "bg-red-400"
                     : usageRate >= 50
                     ? "bg-orange-400"
