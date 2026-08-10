@@ -1,10 +1,21 @@
 #!/usr/bin/env node
 // scripts/migrate-turso.js
 // Turso DB の増分マイグレーション（既存 DB への ALTER TABLE + 新テーブル作成）
-// render.yaml の buildCommand / startCommand から呼び出す。
+// render.yaml の buildCommand / startCommand (npm run start:prod) から呼び出す。
 // TURSO_DATABASE_URL が未設定の場合は exit code 1 でビルドを失敗させる。
+//
+// 手動実行:
+//   TURSO_DATABASE_URL=<url> TURSO_AUTH_TOKEN=<token> node scripts/migrate-turso.js
+//   または: npm run migrate
+//
+// Render Shell での緊急実行:
+//   node scripts/migrate-turso.js  (Environment Variables は自動で利用可能)
 
 const { createClient } = require("@libsql/client");
+
+const SCRIPT_START = new Date().toISOString();
+console.log(`[migrate-turso] Starting... (${SCRIPT_START})`);
+console.log(`[migrate-turso] Node.js ${process.version}  PID=${process.pid}`);
 
 const url = process.env.TURSO_DATABASE_URL;
 const authToken = process.env.TURSO_AUTH_TOKEN;
@@ -12,12 +23,14 @@ const authToken = process.env.TURSO_AUTH_TOKEN;
 if (!url) {
   console.error("[migrate-turso] FATAL: TURSO_DATABASE_URL が未設定です。");
   console.error("[migrate-turso] Render ダッシュボードの Environment Variables を確認してください。");
+  process.exitCode = 1;
   process.exit(1);
 }
 
 if (!authToken) {
   console.error("[migrate-turso] FATAL: TURSO_AUTH_TOKEN が未設定です。");
   console.error("[migrate-turso] Render ダッシュボードの Environment Variables を確認してください。");
+  process.exitCode = 1;
   process.exit(1);
 }
 
@@ -207,11 +220,13 @@ async function main() {
     await execAlter(migration);
   }
 
-  console.log("[migrate-turso] ========== マイグレーション完了 ==========");
+  const elapsed = ((Date.now() - new Date(SCRIPT_START).getTime()) / 1000).toFixed(2);
+  console.log(`[migrate-turso] ========== マイグレーション完了 (${elapsed}s, exit code 0) ==========`);
 }
 
 main().catch((e) => {
   console.error("[migrate-turso] 予期しないエラーが発生しました:");
   console.error(e.stack || e.message);
+  console.error(`[migrate-turso] exit code 1`);
   process.exit(1);
 });

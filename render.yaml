@@ -4,8 +4,8 @@ services:
     env: node
     region: singapore
     plan: free
-    buildCommand: npm install --legacy-peer-deps && node scripts/migrate-turso.js && npm run build
-    startCommand: node scripts/migrate-turso.js && npm run start
+    buildCommand: npm install --legacy-peer-deps && node scripts/migrate-turso.js && npx prisma generate && next build
+    startCommand: npm run start:prod
     envVars:
       - key: NODE_ENV
         value: production
