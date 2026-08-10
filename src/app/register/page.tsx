@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   calcSpecialLeaveInfo,
   getCurrentFiscalYear,
+  HALF_DAY_LEAVE_ANNUAL_LIMIT,
   LEAVE_TYPE_LABELS,
   type LeaveType,
 } from "@/lib/utils";
@@ -22,6 +23,13 @@ interface Profile {
 interface SpecialRecord {
   date: string;
   consumedDays: number;
+}
+
+interface LeaveRecordBasic {
+  type: string;
+  date: string;
+  consumedDays: number;
+  fiscalYearId: number;
 }
 
 interface LeaveRow {
@@ -54,6 +62,7 @@ export default function RegisterPage() {
   const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [specialRecords, setSpecialRecords] = useState<SpecialRecord[]>([]);
+  const [halfDayCountByFYId, setHalfDayCountByFYId] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -68,14 +77,24 @@ export default function RegisterPage() {
     Promise.all([
       fetch("/api/fiscal-years").then((r) => r.json()),
       fetch("/api/profile").then((r) => r.json()),
-      fetch(`/api/leave-records?year=${currentFY}`).then((r) => r.json()),
+      fetch("/api/leave-records").then((r) => r.json()),
     ])
-      .then(([fyData, profileData, recordsData]: [FiscalYear[], Profile, { type: string; date: string; consumedDays: number }[]]) => {
+      .then(([fyData, profileData, recordsData]: [FiscalYear[], Profile, LeaveRecordBasic[]]) => {
         setFiscalYears(fyData);
         setProfile(profileData);
         setSpecialRecords(
           recordsData.filter((r) => r.type === "special").map((r) => ({ date: r.date, consumedDays: r.consumedDays }))
         );
+
+        // 年度ごとの半休取得件数を集計
+        const halfByFY: Record<number, number> = {};
+        recordsData.forEach((r) => {
+          if (r.type === "am_half" || r.type === "pm_half") {
+            halfByFY[r.fiscalYearId] = (halfByFY[r.fiscalYearId] ?? 0) + 1;
+          }
+        });
+        setHalfDayCountByFYId(halfByFY);
+
         const cur = fyData.find((f) => f.year === currentFY);
         const fyId = cur ? String(cur.id) : fyData.length > 0 ? String(fyData[0].id) : "";
         setRows([createRow(today, fyId)]);
@@ -181,6 +200,26 @@ export default function RegisterPage() {
       }
     }
 
+    // 半休の年度上限チェック（フロントエンド、複数行一括送信を考慮）
+    const halfInSubmit: Record<string, number> = {};
+    for (const row of rows) {
+      if (row.type === "am_half" || row.type === "pm_half") {
+        halfInSubmit[row.fiscalYearId] = (halfInSubmit[row.fiscalYearId] ?? 0) + 1;
+      }
+    }
+    for (const [fyIdStr, count] of Object.entries(halfInSubmit)) {
+      const fyId = Number(fyIdStr);
+      const existing = halfDayCountByFYId[fyId] ?? 0;
+      if (existing + count > HALF_DAY_LEAVE_ANNUAL_LIMIT) {
+        const fy = fiscalYears.find((f) => f.id === fyId);
+        setError(
+          `${fy ? fy.year + "年度" : "選択年度"}の半休が年間上限（${HALF_DAY_LEAVE_ANNUAL_LIMIT}回）を超えます（取得済み ${existing} 回 + 今回 ${count} 回 = ${existing + count} 回）`
+        );
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
       // 1件ずつループで登録
       const results: unknown[] = [];
@@ -254,194 +293,207 @@ export default function RegisterPage() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          {rows.map((row, index) => (
-            <div key={row.id} className="card max-w-2xl">
-              {/* 行ヘッダー */}
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-semibold text-slate-600">
-                  {rows.length > 1 ? `${index + 1}件目` : "登録内容"}
-                </span>
-                {rows.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeRow(row.id)}
-                    className="text-xs text-red-500 hover:text-red-700 hover:underline"
-                  >
-                    この行を削除
-                  </button>
-                )}
-              </div>
+          {rows.map((row, index) => {
+            const fyId = Number(row.fiscalYearId);
+            const halfUsed = halfDayCountByFYId[fyId] ?? 0;
+            const halfRemaining = HALF_DAY_LEAVE_ANNUAL_LIMIT - halfUsed;
+            const isHalfType = row.type === "am_half" || row.type === "pm_half";
 
-              <div className="space-y-4">
-                {/* 取得日 */}
-                <div>
-                  <label className="label">
-                    取得日 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    className="input-field"
-                    value={row.date}
-                    onChange={(e) => handleDateChange(row.id, e.target.value)}
-                  />
-                </div>
-
-                {/* 取得種別 */}
-                <div>
-                  <label className="label">
-                    取得種別 <span className="text-red-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {(
-                      Object.entries(LEAVE_TYPE_LABELS) as [LeaveType, string][]
-                    )
-                      .filter(([value]) => value !== "special")
-                      .map(([value, label]) => (
-                        <label
-                          key={value}
-                          className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors text-sm ${
-                            row.type === value
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-slate-200 hover:bg-slate-50"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name={`type-${row.id}`}
-                            value={value}
-                            checked={row.type === value}
-                            onChange={() => handleTypeChange(row.id, value)}
-                            className="text-blue-600 shrink-0"
-                          />
-                          <span className="font-medium text-slate-700 leading-tight">
-                            {label}
-                          </span>
-                        </label>
-                      ))}
-                  </div>
-                  {specialLeaveAvailable && (
-                    <label
-                      className={`mt-2 flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors text-sm ${
-                        row.type === "special"
-                          ? "border-pink-500 bg-pink-50"
-                          : "border-slate-200 hover:bg-slate-50"
-                      }`}
+            return (
+              <div key={row.id} className="card max-w-2xl">
+                {/* 行ヘッダー */}
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-semibold text-slate-600">
+                    {rows.length > 1 ? `${index + 1}件目` : "登録内容"}
+                  </span>
+                  {rows.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeRow(row.id)}
+                      className="text-xs text-red-500 hover:text-red-700 hover:underline"
                     >
-                      <input
-                        type="radio"
-                        name={`type-${row.id}`}
-                        value="special"
-                        checked={row.type === "special"}
-                        onChange={() => handleTypeChange(row.id, "special")}
-                        className="text-pink-600 shrink-0"
-                      />
-                      <span className="font-medium text-slate-700 leading-tight">
-                        {LEAVE_TYPE_LABELS.special}
-                      </span>
-                      <span className="ml-auto text-xs text-pink-600">
-                        残 {specialLeave?.remainingDays ?? 0}日
-                      </span>
+                      この行を削除
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  {/* 取得日 */}
+                  <div>
+                    <label className="label">
+                      取得日 <span className="text-red-500">*</span>
                     </label>
-                  )}
-                  {profile?.joinedAt && !specialLeaveAvailable && (
-                    <p className="text-xs text-slate-400 mt-2">
-                      現在、特別有給の取得対象期間ではありません
-                    </p>
-                  )}
-                </div>
-
-                {/* 時間給専用フィールド */}
-                {row.type === "hourly" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* 開始・終了時刻 */}
-                    <div>
-                      <label className="label">取得時刻</label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="time"
-                          className="input-field"
-                          value={row.startTime}
-                          onChange={(e) => handleStartTimeChange(row.id, e.target.value)}
-                        />
-                        <span className="text-slate-400 text-sm whitespace-nowrap">〜</span>
-                        <input
-                          type="time"
-                          className="input-field"
-                          value={row.endTime}
-                          onChange={(e) => handleEndTimeChange(row.id, e.target.value)}
-                        />
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1">
-                        ※ 時刻を入力すると時間数が自動計算されます
-                      </p>
-                    </div>
-
-                    {/* 時間数 */}
-                    <div>
-                      <label className="label">
-                        時間数 <span className="text-red-500">*</span>
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min="0.5"
-                          max="8"
-                          step="0.5"
-                          required
-                          className="input-field"
-                          value={row.hours}
-                          onChange={(e) => updateRow(row.id, { hours: e.target.value })}
-                          placeholder="例: 2"
-                        />
-                        <span className="text-sm text-slate-500 whitespace-nowrap">時間</span>
-                      </div>
-                      {row.hours && (
-                        <p className="text-xs text-slate-500 mt-1">
-                          ={" "}
-                          {(parseFloat(row.hours) / 8)
-                            .toFixed(3)
-                            .replace(/\.?0+$/, "")}{" "}
-                          日分
-                        </p>
-                      )}
-                    </div>
+                    <input
+                      type="date"
+                      required
+                      className="input-field"
+                      value={row.date}
+                      onChange={(e) => handleDateChange(row.id, e.target.value)}
+                    />
                   </div>
-                )}
 
-                {/* 年度 */}
-                <div>
-                  <label className="label">年度</label>
-                  <select
-                    className="input-field"
-                    value={row.fiscalYearId}
-                    onChange={(e) => updateRow(row.id, { fiscalYearId: e.target.value })}
-                  >
-                    {fiscalYears.map((fy) => (
-                      <option key={fy.id} value={fy.id}>
-                        {fy.year}年度（付与 {fy.grantedDays} 日）
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-slate-400 mt-1">
-                    ※ 取得日から自動選択されます
-                  </p>
-                </div>
+                  {/* 取得種別 */}
+                  <div>
+                    <label className="label">
+                      取得種別 <span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {(
+                        Object.entries(LEAVE_TYPE_LABELS) as [LeaveType, string][]
+                      )
+                        .filter(([value]) => value !== "special")
+                        .map(([value, label]) => (
+                          <label
+                            key={value}
+                            className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors text-sm ${
+                              row.type === value
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`type-${row.id}`}
+                              value={value}
+                              checked={row.type === value}
+                              onChange={() => handleTypeChange(row.id, value)}
+                              className="text-blue-600 shrink-0"
+                            />
+                            <span className="font-medium text-slate-700 leading-tight">
+                              {label}
+                            </span>
+                          </label>
+                        ))}
+                    </div>
+                    {/* 半休残り回数表示 */}
+                    {isHalfType && (
+                      <p className={`text-xs mt-2 font-medium ${halfRemaining <= 0 ? "text-red-500" : halfRemaining <= 5 ? "text-orange-500" : "text-purple-600"}`}>
+                        今年度の半休残り {halfRemaining} 回（取得済み {halfUsed} 回 / 上限 {HALF_DAY_LEAVE_ANNUAL_LIMIT} 回）
+                      </p>
+                    )}
+                    {specialLeaveAvailable && (
+                      <label
+                        className={`mt-2 flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors text-sm ${
+                          row.type === "special"
+                            ? "border-pink-500 bg-pink-50"
+                            : "border-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={`type-${row.id}`}
+                          value="special"
+                          checked={row.type === "special"}
+                          onChange={() => handleTypeChange(row.id, "special")}
+                          className="text-pink-600 shrink-0"
+                        />
+                        <span className="font-medium text-slate-700 leading-tight">
+                          {LEAVE_TYPE_LABELS.special}
+                        </span>
+                        <span className="ml-auto text-xs text-pink-600">
+                          残 {specialLeave?.remainingDays ?? 0}日
+                        </span>
+                      </label>
+                    )}
+                    {profile?.joinedAt && !specialLeaveAvailable && (
+                      <p className="text-xs text-slate-400 mt-2">
+                        現在、特別有給の取得対象期間ではありません
+                      </p>
+                    )}
+                  </div>
 
-                {/* 備考 */}
-                <div>
-                  <label className="label">備考</label>
-                  <input
-                    type="text"
-                    className="input-field"
-                    value={row.note}
-                    onChange={(e) => updateRow(row.id, { note: e.target.value })}
-                    placeholder="任意入力"
-                  />
+                  {/* 時間給専用フィールド */}
+                  {row.type === "hourly" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* 開始・終了時刻 */}
+                      <div>
+                        <label className="label">取得時刻</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="time"
+                            className="input-field"
+                            value={row.startTime}
+                            onChange={(e) => handleStartTimeChange(row.id, e.target.value)}
+                          />
+                          <span className="text-slate-400 text-sm whitespace-nowrap">〜</span>
+                          <input
+                            type="time"
+                            className="input-field"
+                            value={row.endTime}
+                            onChange={(e) => handleEndTimeChange(row.id, e.target.value)}
+                          />
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">
+                          ※ 時刻を入力すると時間数が自動計算されます
+                        </p>
+                      </div>
+
+                      {/* 時間数 */}
+                      <div>
+                        <label className="label">
+                          時間数 <span className="text-red-500">*</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0.5"
+                            max="8"
+                            step="0.5"
+                            required
+                            className="input-field"
+                            value={row.hours}
+                            onChange={(e) => updateRow(row.id, { hours: e.target.value })}
+                            placeholder="例: 2"
+                          />
+                          <span className="text-sm text-slate-500 whitespace-nowrap">時間</span>
+                        </div>
+                        {row.hours && (
+                          <p className="text-xs text-slate-500 mt-1">
+                            ={" "}
+                            {(parseFloat(row.hours) / 8)
+                              .toFixed(3)
+                              .replace(/\.?0+$/, "")}{" "}
+                            日分
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 年度 */}
+                  <div>
+                    <label className="label">年度</label>
+                    <select
+                      className="input-field"
+                      value={row.fiscalYearId}
+                      onChange={(e) => updateRow(row.id, { fiscalYearId: e.target.value })}
+                    >
+                      {fiscalYears.map((fy) => (
+                        <option key={fy.id} value={fy.id}>
+                          {fy.year}年度（付与 {fy.grantedDays} 日）
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-slate-400 mt-1">
+                      ※ 取得日から自動選択されます
+                    </p>
+                  </div>
+
+                  {/* 備考 */}
+                  <div>
+                    <label className="label">備考</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      value={row.note}
+                      onChange={(e) => updateRow(row.id, { note: e.target.value })}
+                      placeholder="任意入力"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* もう1件追加ボタン */}
           <div className="max-w-2xl">

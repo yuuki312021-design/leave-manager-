@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { calcConsumedDays, calcSpecialLeaveInfo, type LeaveType } from "@/lib/utils";
+import { calcConsumedDays, calcSpecialLeaveInfo, HALF_DAY_LEAVE_ANNUAL_LIMIT, type LeaveType } from "@/lib/utils";
 
 // GET /api/leave-records?year=2024
 export async function GET(request: NextRequest) {
@@ -73,6 +73,25 @@ export async function POST(request: NextRequest) {
     }
 
     const consumedDays = calcConsumedDays(type as LeaveType, hours);
+
+    // 半休の年度取得上限チェック（20回/年度）
+    if (type === "am_half" || type === "pm_half") {
+      const halfCount = await prisma.leaveRecord.count({
+        where: {
+          userId,
+          fiscalYearId: Number(fiscalYearId),
+          type: { in: ["am_half", "pm_half"] },
+        },
+      });
+      if (halfCount >= HALF_DAY_LEAVE_ANNUAL_LIMIT) {
+        return NextResponse.json(
+          {
+            error: `半休の年間取得上限（${HALF_DAY_LEAVE_ANNUAL_LIMIT}回）に達しています（現在 ${halfCount} 回取得済み）`,
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     // 特別有給休暇の利用可能判定
     if (type === "special") {

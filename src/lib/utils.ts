@@ -1,5 +1,15 @@
 export type LeaveType = "full" | "am_half" | "pm_half" | "hourly" | "special";
 
+/** 年度ごとの半休取得上限回数（am_half + pm_half の合計件数） */
+export const HALF_DAY_LEAVE_ANNUAL_LIMIT = 20;
+
+/** 半休取得件数を計算（am_half + pm_half の件数） */
+export function calcHalfDayLeaveCount(records: { type: string }[]): number {
+  return records.filter(
+    (r) => r.type === "am_half" || r.type === "pm_half"
+  ).length;
+}
+
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   full: "全休（1日）",
   am_half: "午前半休（0.5日）",

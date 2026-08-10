@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   getCurrentFiscalYear,
+  HALF_DAY_LEAVE_ANNUAL_LIMIT,
   LEAVE_TYPE_SHORT,
   type LeaveType,
 } from "@/lib/utils";
@@ -169,6 +170,12 @@ export default function DashboardPage() {
   const totalConsumed = regularRecords.reduce((sum, r) => sum + r.consumedDays, 0);
   const remaining = (fiscalYear?.grantedDays ?? 0) - totalConsumed;
 
+  // 半休取得件数（am_half + pm_half の回数）
+  const halfDayCount = (fiscalYear?.leaveRecords ?? []).filter(
+    (r) => r.type === "am_half" || r.type === "pm_half"
+  ).length;
+  const halfDayRemaining = Math.max(0, HALF_DAY_LEAVE_ANNUAL_LIMIT - halfDayCount);
+
   // 種別ごとの集計（特別有給は通常集計から除外）
   const typeBreakdown = regularRecords.reduce(
     (acc, r) => {
@@ -317,6 +324,16 @@ export default function DashboardPage() {
                     );
                   })}
                 </div>
+                {/* 半休取得回数 */}
+                {halfDayCount > 0 && (
+                  <div className={`mt-3 text-xs flex items-center gap-1.5 ${halfDayRemaining === 0 ? "text-red-500" : halfDayRemaining <= 5 ? "text-orange-500" : "text-slate-500"}`}>
+                    <span>半休取得回数:</span>
+                    <span className="font-semibold">{halfDayCount} 回</span>
+                    <span>/</span>
+                    <span>{HALF_DAY_LEAVE_ANNUAL_LIMIT} 回 上限</span>
+                    <span className="ml-1">（残り {halfDayRemaining} 回）</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
