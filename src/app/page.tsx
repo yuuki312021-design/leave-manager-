@@ -117,6 +117,50 @@ function ScheduleBanner({
   );
 }
 
+/** 2月末有給義務リマインダーバナー（2月〜3月のみ表示） */
+function MandatoryLeaveBanner({
+  taken,
+  required,
+}: {
+  taken: number;
+  required: number;
+}) {
+  const month = new Date().getMonth() + 1; // 1-12
+  if (month < 2 || month > 3) return null;
+
+  const remaining = Math.max(0, required - taken);
+  const isMet = taken >= required;
+  const takenDisplay =
+    taken % 1 === 0 ? taken : parseFloat(taken.toFixed(3));
+  const remainingDisplay =
+    remaining % 1 === 0 ? remaining : parseFloat(remaining.toFixed(3));
+
+  if (isMet) {
+    return (
+      <div className="rounded-xl border-l-4 border-green-500 bg-green-50 shadow-sm p-4 flex items-start gap-3">
+        <span className="text-green-600 text-lg leading-none mt-0.5">✅</span>
+        <p className="text-sm font-semibold text-green-700">
+          法定有給{required}日の取得が完了しています（{takenDisplay}日取得済み）
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border-l-4 border-red-500 bg-red-50 shadow-sm p-4 flex items-start gap-3">
+      <span className="text-red-500 text-lg leading-none mt-0.5">⚠️</span>
+      <div>
+        <p className="text-sm font-semibold text-red-700">
+          2月末までに法定有給{required}日の取得が必要です
+        </p>
+        <p className="text-xs text-red-600 mt-0.5">
+          現在{takenDisplay}日取得済み（あと{remainingDisplay}日）
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function todayStr(): string {
   return new Date().toISOString().split("T")[0];
 }
@@ -248,6 +292,12 @@ export default function DashboardPage() {
         label={`明日の予定（${tomorrowStr()}）`}
         records={tomorrowRecords}
         color="border-blue-400"
+      />
+
+      {/* 2月末有給義務リマインダーバナー */}
+      <MandatoryLeaveBanner
+        taken={mandatoryDaysTaken}
+        required={MANDATORY_LEAVE_DAYS}
       />
 
       {!fiscalYear ? (
