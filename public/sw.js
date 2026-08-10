@@ -1,9 +1,12 @@
 // Service Worker for 有給休暇管理 PWA
-// Version: 1.0.0
+// Version: 1.1.0
 
-const CACHE_NAME = 'leave-manager-v1';
+const CACHE_NAME = 'leave-manager-v2';
+
+// 認証不要の純粋な静的アセットのみ precache する
+// NOTE: '/' は含めない（認証が必要なページはミドルウェアがリダイレクトするため、
+//       未認証状態でキャッシュすると /login の HTML が '/' にキャッシュされてしまう）
 const STATIC_ASSETS = [
-  '/',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
@@ -40,7 +43,7 @@ self.addEventListener('activate', (event) => {
 });
 
 // -----------------------------------------------
-// Fetch: Network-first for API/auth, cache-first for static
+// Fetch: ルート別キャッシュ戦略
 // -----------------------------------------------
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
@@ -63,7 +66,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first with network fallback for other routes
+  // HTML ナビゲーションリクエスト（ページ遷移）は常にネットワークファースト
+  // 認証状態によってサーバー側でリダイレクトが必要なため、キャッシュしない
+  const acceptHeader = event.request.headers.get('accept') || '';
+  if (acceptHeader.includes('text/html')) {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        // オフライン時はキャッシュからフォールバック
+        return caches.match(event.request).then(
+          (cached) =>
+            cached ||
+            new Response('<h1>オフラインです</h1>', {
+              status: 503,
+              headers: { 'Content-Type': 'text/html; charset=utf-8' },
+            })
+        );
+      })
+    );
+    return;
+  }
+
+  // 静的アセット（画像・JS・CSS など）はキャッシュファーストで処理
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const networkFetch = fetch(event.request).then((response) => {
