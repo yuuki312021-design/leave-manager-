@@ -6,7 +6,9 @@ import {
   calcMandatoryLeaveDays,
   getCurrentFiscalYear,
   HALF_DAY_LEAVE_ANNUAL_LIMIT,
+  HALF_DAY_LEAVE_REMAINING_RED_THRESHOLD,
   HOURLY_LEAVE_ANNUAL_LIMIT,
+  HOURLY_LEAVE_REMAINING_RED_THRESHOLD,
   MANDATORY_LEAVE_DAYS,
   LEAVE_TYPE_SHORT,
   type LeaveType,
@@ -351,6 +353,26 @@ export default function DashboardPage() {
               sub={isMandatoryMet
                 ? `/ ${MANDATORY_LEAVE_DAYS}日（達成）`
                 : `/ ${MANDATORY_LEAVE_DAYS}日（あと${mandatoryRemainingDays % 1 === 0 ? mandatoryRemainingDays : parseFloat(mandatoryRemainingDays.toFixed(3))}日）`}
+            />
+          </div>
+
+          {/* 時間給・半休サマリーカード */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SummaryCard
+              label="時間給 残り時間"
+              value={hourlyHoursRemaining}
+              unit="時間"
+              color={hourlyHoursRemaining <= HOURLY_LEAVE_REMAINING_RED_THRESHOLD ? "border-red-400" : "border-amber-400"}
+              textColor={hourlyHoursRemaining <= HOURLY_LEAVE_REMAINING_RED_THRESHOLD ? "text-red-600" : undefined}
+              sub={`取得済み ${hourlyHoursTotal}時間 / 上限 ${HOURLY_LEAVE_ANNUAL_LIMIT}時間`}
+            />
+            <SummaryCard
+              label="半休 残り回数"
+              value={halfDayRemaining}
+              unit="回"
+              color={halfDayRemaining <= HALF_DAY_LEAVE_REMAINING_RED_THRESHOLD ? "border-red-400" : "border-purple-400"}
+              textColor={halfDayRemaining <= HALF_DAY_LEAVE_REMAINING_RED_THRESHOLD ? "text-red-600" : undefined}
+              sub={`取得済み ${halfDayCount}回 / 上限 ${HALF_DAY_LEAVE_ANNUAL_LIMIT}回`}
             />
           </div>
 

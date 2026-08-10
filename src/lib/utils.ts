@@ -13,6 +13,12 @@ export function calcHalfDayLeaveCount(records: { type: string }[]): number {
 /** 年度ごとの時間給取得上限時間（5日相当） */
 export const HOURLY_LEAVE_ANNUAL_LIMIT = 40;
 
+/** 時間給残り時間がこの値以下になった場合に赤色表示 */
+export const HOURLY_LEAVE_REMAINING_RED_THRESHOLD = 8;
+
+/** 半休残り回数がこの値以下になった場合に赤色表示 */
+export const HALF_DAY_LEAVE_REMAINING_RED_THRESHOLD = 5;
+
 /** 時間給の合計取得時間を計算 */
 export function calcHourlyLeaveHours(
   records: { type: string; hours?: number | null }[]
