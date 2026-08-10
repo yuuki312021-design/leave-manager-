@@ -38,8 +38,9 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-[url('/auth-background.jpg')] bg-cover bg-center bg-fixed bg-no-repeat relative">
+      <div className="absolute inset-0 bg-black/40" />
+      <div className="relative z-10 w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-white drop-shadow">有給管理</h1>
           <p className="text-sm text-slate-200 mt-1">Leave Manager</p>
