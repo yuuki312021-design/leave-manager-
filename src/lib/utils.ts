@@ -108,11 +108,11 @@ function addYearsLocal(d: Date, years: number): Date {
   return new Date(d.getFullYear() + years, d.getMonth(), d.getDate());
 }
 
-/** 入社日から勤続年数（満了年数・月数）を計算 */
-export function calcTenure(
+/** 入社日からの経過年数・月数（0ベース）を計算するプライベートヘルパー */
+function calcElapsedYearsMonths(
   joinedAtStr: string,
-  now: Date = new Date()
-): { years: number; months: number; text: string } | null {
+  now: Date
+): { years: number; months: number } | null {
   const joined = parseLocalDate(joinedAtStr);
   if (isNaN(joined.getTime())) return null;
 
@@ -125,8 +125,21 @@ export function calcTenure(
     years -= 1;
     months += 12;
   }
-  years = Math.max(0, years);
-  months = Math.max(0, months);
+  return { years: Math.max(0, years), months: Math.max(0, months) };
+}
+
+/** 入社月を1か月目として勤続年数・月数を計算 */
+export function calcTenure(
+  joinedAtStr: string,
+  now: Date = new Date()
+): { years: number; months: number; text: string } | null {
+  const elapsed = calcElapsedYearsMonths(joinedAtStr, now);
+  if (!elapsed) return null;
+
+  // 経過月数（0ベース）から入社月を1か月目とする1ベースの勤続年数・月数に変換
+  const totalMonths = elapsed.years * 12 + elapsed.months;
+  const years = Math.floor(totalMonths / 12) + 1;
+  const months = totalMonths % 12 + 1;
 
   return {
     years,
@@ -155,10 +168,11 @@ export function calcSpecialLeaveInfo(
   specialRecords: { date: string; consumedDays: number }[],
   now: Date = new Date()
 ): SpecialLeaveInfo | null {
-  const tenure = calcTenure(joinedAtStr, now);
-  if (!tenure) return null;
+  // 特別有給の判定には経過年数（0ベース）を使用する（calcTenure の1ベース値とは独立）
+  const elapsed = calcElapsedYearsMonths(joinedAtStr, now);
+  if (!elapsed) return null;
 
-  const completedYears = tenure.years;
+  const completedYears = elapsed.years;
   if (completedYears < 5) return null;
 
   const milestone = Math.floor(completedYears / 5) * 5;
