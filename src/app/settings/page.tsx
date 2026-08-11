@@ -42,6 +42,10 @@ export default function SettingsPage() {
   const [notifError, setNotifError] = useState("");
   const [notifSuccess, setNotifSuccess] = useState("");
 
+  // テスト通知
+  const [testNotifLoading, setTestNotifLoading] = useState(false);
+  const [testNotifResult, setTestNotifResult] = useState<string | null>(null);
+
   // 新規年度追加フォーム
   const [newYear, setNewYear] = useState(String(getCurrentFiscalYear()));
   const [newDays, setNewDays] = useState("");
@@ -105,6 +109,28 @@ export default function SettingsPage() {
       setNotifError("通信エラー");
     } finally {
       setNotifSaving(false);
+    }
+  };
+
+  const handleTestNotif = async () => {
+    setTestNotifResult(null);
+    setTestNotifLoading(true);
+    try {
+      const res = await fetch("/api/push/test", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setTestNotifResult(
+          `失敗: ${data.error ?? "不明なエラー"}${data.errors?.length ? ` (${data.errors.join(", ")})` : ""}`
+        );
+      } else {
+        setTestNotifResult(
+          `送信成功: ${data.sent}件 / 購読数 ${data.subscriptionCount}件`
+        );
+      }
+    } catch {
+      setTestNotifResult("失敗: 通信エラー");
+    } finally {
+      setTestNotifLoading(false);
     }
   };
 
@@ -353,6 +379,33 @@ export default function SettingsPage() {
           <div>
             <p className="text-sm font-medium text-slate-700 mb-2">この端末の購読状態</p>
             <PushNotificationManager />
+          </div>
+
+          {/* テスト通知 */}
+          <div>
+            <p className="text-sm font-medium text-slate-700 mb-2">テスト通知</p>
+            <button
+              type="button"
+              onClick={handleTestNotif}
+              disabled={testNotifLoading}
+              className="btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {testNotifLoading ? "送信中..." : "テスト通知を送信"}
+            </button>
+            {testNotifResult && (
+              <p
+                className={`text-xs mt-2 ${
+                  testNotifResult.startsWith("送信成功")
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                {testNotifResult}
+              </p>
+            )}
+            <p className="text-xs text-slate-400 mt-1">
+              購読済みの全端末にテスト通知を即送信します
+            </p>
           </div>
 
           {notifError && (
