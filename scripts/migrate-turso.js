@@ -205,6 +205,21 @@ const CREATE_STATEMENTS = [
     label: "INDEX release_notes_version_key",
     sql: `CREATE UNIQUE INDEX IF NOT EXISTS "release_notes_version_key" ON "release_notes"("version")`,
   },
+  {
+    label: "TABLE feedbacks",
+    sql: `CREATE TABLE IF NOT EXISTS "feedbacks" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "userId" INTEGER NOT NULL,
+      "type" TEXT NOT NULL,
+      "title" TEXT NOT NULL,
+      "body" TEXT NOT NULL,
+      "status" TEXT NOT NULL DEFAULT 'open',
+      "adminNote" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "feedbacks_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )`,
+  },
 ];
 
 // ── Step 2: ALTER TABLE（既存 DB への増分カラム追加）──────────────────────────

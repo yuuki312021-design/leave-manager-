@@ -10,6 +10,7 @@ const navItems = [
   { href: "/register", label: "取得登録", icon: "✏️" },
   { href: "/history", label: "取得履歴", icon: "📋" },
   { href: "/settings", label: "年度設定", icon: "⚙️" },
+  { href: "/feedback", label: "フィードバック", icon: "📝" },
 ];
 
 export default function Navigation() {
@@ -67,17 +68,30 @@ export default function Navigation() {
 
           {/* 管理者専用メニュー */}
           {isAdmin && (
-            <Link
-              href="/admin/releases"
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                pathname.startsWith("/admin")
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-              }`}
-            >
-              <span className="text-base">📢</span>
-              リリース管理
-            </Link>
+            <>
+              <Link
+                href="/admin/releases"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  pathname === "/admin/releases"
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+                }`}
+              >
+                <span className="text-base">📢</span>
+                リリース管理
+              </Link>
+              <Link
+                href="/admin/feedback"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  pathname === "/admin/feedback"
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+                }`}
+              >
+                <span className="text-base">📋</span>
+                フィードバック管理
+              </Link>
+            </>
           )}
         </nav>
 
@@ -115,15 +129,26 @@ export default function Navigation() {
           })}
           {/* 管理者専用モバイルメニュー */}
           {isAdmin && (
-            <Link
-              href="/admin/releases"
-              className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors ${
-                pathname.startsWith("/admin") ? "text-blue-600" : "text-slate-500"
-              }`}
-            >
-              <span className="text-xl">📢</span>
-              <span className="leading-tight">リリース</span>
-            </Link>
+            <>
+              <Link
+                href="/admin/releases"
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors ${
+                  pathname === "/admin/releases" ? "text-blue-600" : "text-slate-500"
+                }`}
+              >
+                <span className="text-xl">📢</span>
+                <span className="leading-tight">リリース</span>
+              </Link>
+              <Link
+                href="/admin/feedback"
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors ${
+                  pathname === "/admin/feedback" ? "text-blue-600" : "text-slate-500"
+                }`}
+              >
+                <span className="text-xl">📋</span>
+                <span className="leading-tight">FB管理</span>
+              </Link>
+            </>
           )}
           {/* モバイルのログアウトボタン */}
           <button

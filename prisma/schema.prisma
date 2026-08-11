@@ -23,6 +23,7 @@ model User {
   fiscalYears       FiscalYear[]
   leaveRecords      LeaveRecord[]
   pushSubscriptions PushSubscription[]
+  feedbacks         Feedback[]
 
   @@map("users")
 }
@@ -96,4 +97,19 @@ model ReleaseNote {
   updatedAt DateTime @updatedAt
 
   @@map("release_notes")
+}
+
+model Feedback {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // 'bug' | 'feature'
+  title     String
+  body      String
+  status    String   @default("open") // 'open' | 'in_progress' | 'resolved' | 'closed'
+  adminNote String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("feedbacks")
 }
