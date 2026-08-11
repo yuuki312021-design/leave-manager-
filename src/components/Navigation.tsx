@@ -10,7 +10,7 @@ const navItems = [
   { href: "/", label: "ダッシュボード", icon: "📊" },
   { href: "/register", label: "取得登録", icon: "✏️" },
   { href: "/history", label: "取得履歴", icon: "📋" },
-  { href: "/settings", label: "年度設定", icon: "⚙️" },
+  { href: "/settings", label: "詳細設定", icon: "⚙️" },
   { href: "/feedback", label: "フィードバック", icon: "📝" },
 ];
 
