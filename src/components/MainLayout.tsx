@@ -18,7 +18,7 @@ export default function MainLayout({
   }
 
   return (
-    <main className="md:ml-56 min-h-screen pb-20 md:pb-0">
+    <main className="min-h-screen pt-14">
       <div className="max-w-4xl mx-auto px-4 py-6 md:px-8 md:py-8">
         {children}
       </div>
