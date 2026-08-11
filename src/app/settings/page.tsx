@@ -8,6 +8,7 @@ import {
   getCurrentFiscalYear,
 } from "@/lib/utils";
 import PushNotificationManager from "@/components/PushNotificationManager";
+import { BG_LS_KEY } from "@/components/BackgroundProvider";
 
 interface FiscalYear {
   id: number;
@@ -93,6 +94,38 @@ function AccordionSection({
 }
 
 // ───────────────────────────────────────────
+// 画像リサイズ・圧縮（Canvas API）
+// ───────────────────────────────────────────
+async function resizeAndCompress(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const MAX_W = 1920;
+        let w = img.width;
+        let h = img.height;
+        if (w > MAX_W) {
+          h = Math.round((h * MAX_W) / w);
+          w = MAX_W;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("canvas context unavailable"));
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.onerror = () => reject(new Error("image load error"));
+      img.src = evt.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error("file read error"));
+    reader.readAsDataURL(file);
+  });
+}
+
+// ───────────────────────────────────────────
 // 設定ページ本体
 // ───────────────────────────────────────────
 export default function SettingsPage() {
@@ -137,6 +170,13 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const deletePasswordRef = useRef<HTMLInputElement>(null);
 
+  // 背景画像設定
+  const [bgPreview, setBgPreview] = useState<string | null>(null);
+  const [bgProcessing, setBgProcessing] = useState(false);
+  const [bgError, setBgError] = useState("");
+  const [bgSuccess, setBgSuccess] = useState("");
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
+
   // アコーディオン開閉状態（複数同時展開可）
   const [openSections, setOpenSections] = useState<Set<string>>(
     new Set(["profile"])
@@ -179,6 +219,16 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // localStorage から背景画像プレビューを初期化
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(BG_LS_KEY);
+      if (stored) setBgPreview(stored);
+    } catch {
+      // localStorage 使用不可の場合はスキップ
+    }
   }, []);
 
   useEffect(() => {
@@ -335,6 +385,44 @@ export default function SettingsPage() {
     setDeleteDialogOpen(false);
     setDeletePassword("");
     setDeleteError("");
+  };
+
+  // ───── 背景画像ハンドラー ─────
+  const handleBgFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBgError("");
+    setBgSuccess("");
+
+    if (file.size > 5 * 1024 * 1024) {
+      setBgError("ファイルが5MBを超えています。自動的に圧縮して保存します。");
+    }
+
+    setBgProcessing(true);
+    try {
+      const dataUrl = await resizeAndCompress(file);
+      localStorage.setItem(BG_LS_KEY, dataUrl);
+      setBgPreview(dataUrl);
+      window.dispatchEvent(new Event("bg-changed"));
+      setBgSuccess("背景画像を設定しました");
+    } catch {
+      setBgError("画像の処理に失敗しました。別の画像をお試しください。");
+    } finally {
+      setBgProcessing(false);
+      if (bgFileInputRef.current) bgFileInputRef.current.value = "";
+    }
+  };
+
+  const handleBgReset = () => {
+    try {
+      localStorage.removeItem(BG_LS_KEY);
+    } catch {
+      // ignore
+    }
+    setBgPreview(null);
+    setBgError("");
+    setBgSuccess("背景画像をデフォルトに戻しました");
+    window.dispatchEvent(new Event("bg-changed"));
   };
 
   const handleAccountDelete = async (e: React.FormEvent) => {
@@ -755,6 +843,80 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+          </AccordionSection>
+
+          {/* ── 4. 背景画像設定 ── */}
+          <AccordionSection
+            id="background"
+            icon="🖼️"
+            title="背景画像設定"
+            description="アプリの背景画像をカメラロールから選んで変更できます"
+            isOpen={openSections.has("background")}
+            onToggle={toggleSection}
+          >
+            {/* 隠しファイル入力 */}
+            <input
+              ref={bgFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleBgFileChange}
+            />
+
+            {/* プレビュー */}
+            <div className="mb-4">
+              <p className="text-sm font-medium text-slate-700 mb-2">現在の背景</p>
+              <div
+                className="w-full h-32 rounded-xl bg-cover bg-center bg-no-repeat border border-slate-200 overflow-hidden relative"
+                style={{
+                  backgroundImage: bgPreview
+                    ? `url(${bgPreview})`
+                    : "url(/background.jpg)",
+                }}
+              >
+                <div className="absolute inset-0 bg-black/20 flex items-end p-2">
+                  <span className="text-white text-xs font-medium drop-shadow">
+                    {bgPreview ? "カスタム背景" : "デフォルト背景"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* エラー / 成功メッセージ */}
+            {bgError && (
+              <div className="mb-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
+                {bgError}
+              </div>
+            )}
+            {bgSuccess && (
+              <div className="mb-3 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                {bgSuccess}
+              </div>
+            )}
+
+            {/* ボタン群 */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={bgProcessing}
+                onClick={() => bgFileInputRef.current?.click()}
+                className="btn-primary text-sm disabled:opacity-50"
+              >
+                {bgProcessing ? "処理中..." : "画像を選択"}
+              </button>
+              {bgPreview && (
+                <button
+                  type="button"
+                  onClick={handleBgReset}
+                  className="btn-secondary text-sm"
+                >
+                  デフォルトに戻す
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              JPEG・PNG・HEIC などの画像ファイルを選択できます。5MB超の場合は自動圧縮します。設定はこの端末のみに適用されます。
+            </p>
           </AccordionSection>
 
           <AccordionSection
