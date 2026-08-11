@@ -1,5 +1,8 @@
 export type LeaveType = "full" | "am_half" | "pm_half" | "hourly" | "special";
 
+/** 管理者メールアドレス */
+export const ADMIN_EMAIL = "yuuki312021@gmail.com";
+
 /** 年度ごとの半休取得上限回数（am_half + pm_half の合計件数） */
 export const HALF_DAY_LEAVE_ANNUAL_LIMIT = 20;
 

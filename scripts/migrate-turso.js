@@ -189,6 +189,22 @@ const CREATE_STATEMENTS = [
     label: "INDEX password_reset_tokens_email_idx",
     sql: `CREATE INDEX IF NOT EXISTS "password_reset_tokens_email_idx" ON "password_reset_tokens"("email")`,
   },
+  {
+    label: "TABLE release_notes",
+    sql: `CREATE TABLE IF NOT EXISTS "release_notes" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "version" TEXT NOT NULL,
+      "title" TEXT NOT NULL,
+      "body" TEXT NOT NULL,
+      "notified" BOOLEAN NOT NULL DEFAULT false,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+  },
+  {
+    label: "INDEX release_notes_version_key",
+    sql: `CREATE UNIQUE INDEX IF NOT EXISTS "release_notes_version_key" ON "release_notes"("version")`,
+  },
 ];
 
 // ── Step 2: ALTER TABLE（既存 DB への増分カラム追加）──────────────────────────

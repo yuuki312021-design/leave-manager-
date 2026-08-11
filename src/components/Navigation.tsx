@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { ADMIN_EMAIL } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "ダッシュボード", icon: "📊" },
@@ -14,6 +15,8 @@ const navItems = [
 export default function Navigation() {
   const pathname = usePathname();
   const { data: session } = useSession();
+
+  const isAdmin = session?.user?.email === ADMIN_EMAIL;
 
   // ログイン・登録・パスワードリセット関連ページではナビゲーションを非表示
   if (
@@ -61,6 +64,21 @@ export default function Navigation() {
               </Link>
             );
           })}
+
+          {/* 管理者専用メニュー */}
+          {isAdmin && (
+            <Link
+              href="/admin/releases"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                pathname.startsWith("/admin")
+                  ? "bg-blue-50 text-blue-700"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+              }`}
+            >
+              <span className="text-base">📢</span>
+              リリース管理
+            </Link>
+          )}
         </nav>
 
         {/* ログアウトボタン */}
@@ -95,6 +113,18 @@ export default function Navigation() {
               </Link>
             );
           })}
+          {/* 管理者専用モバイルメニュー */}
+          {isAdmin && (
+            <Link
+              href="/admin/releases"
+              className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors ${
+                pathname.startsWith("/admin") ? "text-blue-600" : "text-slate-500"
+              }`}
+            >
+              <span className="text-xl">📢</span>
+              <span className="leading-tight">リリース</span>
+            </Link>
+          )}
           {/* モバイルのログアウトボタン */}
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
