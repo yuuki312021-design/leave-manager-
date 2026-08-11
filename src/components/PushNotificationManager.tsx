@@ -38,6 +38,9 @@ export default function PushNotificationManager({
   const [unsubscribing, setUnsubscribing] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // VAPID公開鍵が設定されているか確認（ビルド時に解決される）
+  const vapidKeyMissing = !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
   // ブラウザの通知許可状態を取得
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -86,11 +89,18 @@ export default function PushNotificationManager({
       // 2. Service Worker を取得
       const reg = await navigator.serviceWorker.ready;
 
-      // 3. VAPID公開鍵で購読（空の場合はapplicationServerKeyなしで試みる）
+      // 3. VAPID公開鍵で購読（未設定時はエラーを返す）
       const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      const subscribeOptions: PushSubscriptionOptionsInit = vapidKey
-        ? { userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(vapidKey) }
-        : { userVisibleOnly: true };
+      if (!vapidKey) {
+        setErrorMsg(
+          "プッシュ通知を有効にするには管理者が VAPID 公開鍵を設定する必要があります（NEXT_PUBLIC_VAPID_PUBLIC_KEY）"
+        );
+        return;
+      }
+      const subscribeOptions: PushSubscriptionOptionsInit = {
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      };
 
       const pushSub = await reg.pushManager.subscribe(subscribeOptions);
       const json = pushSub.toJSON();
@@ -185,14 +195,23 @@ export default function PushNotificationManager({
 
       {/* 操作ボタン */}
       {!isSubscribed ? (
-        <button
-          type="button"
-          onClick={handleSubscribe}
-          disabled={subscribing}
-          className="btn-primary text-sm"
-        >
-          {subscribing ? "設定中..." : "通知を許可する"}
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={handleSubscribe}
+            disabled={subscribing || vapidKeyMissing}
+            className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {subscribing ? "設定中..." : "通知を許可する"}
+          </button>
+          {vapidKeyMissing && (
+            <p className="text-xs text-amber-600">
+              プッシュ通知を有効にするには管理者が VAPID 公開鍵を設定する必要があります。
+              Render ダッシュボードの Environment に{" "}
+              <code className="font-mono">NEXT_PUBLIC_VAPID_PUBLIC_KEY</code> を設定してください。
+            </p>
+          )}
+        </>
       ) : (
         <button
           type="button"

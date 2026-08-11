@@ -103,6 +103,47 @@ ALTER TABLE users ADD COLUMN pushEnabled BOOLEAN NOT NULL DEFAULT false;
 
 ---
 
+## Web Push (VAPID) 設定
+
+### STEP 1: VAPID キーを生成
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+出力例:
+```
+Public Key:
+Bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+Private Key:
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+### STEP 2: Render ダッシュボードの Environment に設定
+
+Render ダッシュボード → サービス選択 → **Environment** で以下を追加:
+
+| 変数名 | 値 |
+|--------|----|
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | 上記の Public Key |
+| `VAPID_PRIVATE_KEY` | 上記の Private Key |
+| `VAPID_SUBJECT` | `mailto:admin@example.com`（管理者メールアドレス） |
+
+> **重要**: `VAPID_PRIVATE_KEY` は絶対に GitHub に push しないこと。`.env.local` のみに保存。
+
+### STEP 3: 再デプロイ
+
+Environment Variables 設定後、**Manual Deploy** → **Deploy latest commit** を実行してください。
+
+### 備考
+
+- iOS Safari は **iOS 16.4+** でないと Web Push を受信できません
+- Android Chrome では `manifest.json` の `gcm_sender_id` が必要です（設定済み）
+- VAPID キーが未設定の場合、設定画面の「通知を許可する」ボタンは無効化されます
+
+---
+
 ## 環境変数
 
 Render ダッシュボードの Environment Variables で以下を設定してください:
