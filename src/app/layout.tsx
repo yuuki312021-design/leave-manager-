@@ -4,6 +4,7 @@ import Navigation from "@/components/Navigation";
 import Providers from "@/components/Providers";
 import MainLayout from "@/components/MainLayout";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import InstallPrompt from "@/components/InstallPrompt";
 
 export const metadata: Metadata = {
   title: "有給休暇管理",
@@ -29,6 +30,7 @@ export default function RootLayout({
           <ServiceWorkerRegistration />
           <Navigation />
           <MainLayout>{children}</MainLayout>
+          <InstallPrompt />
         </Providers>
       </body>
     </html>
