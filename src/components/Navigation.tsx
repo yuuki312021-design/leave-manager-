@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { ADMIN_EMAIL } from "@/lib/utils";
 
 const navItems = [
@@ -177,20 +177,6 @@ export default function Navigation() {
             </>
           )}
         </nav>
-
-        {/* ログアウトボタン */}
-        <div className="px-3 py-4 border-t border-slate-200">
-          <button
-            onClick={() => {
-              closeMenu();
-              signOut({ callbackUrl: "/login" });
-            }}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-          >
-            <span className="text-base">🚪</span>
-            ログアウト
-          </button>
-        </div>
       </aside>
     </>
   );

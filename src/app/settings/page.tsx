@@ -757,26 +757,43 @@ export default function SettingsPage() {
             </div>
           </AccordionSection>
 
-          {/* ── 4. アカウント管理 ── */}
           <AccordionSection
             id="account"
             icon="🔐"
             title="アカウント管理"
-            description="アカウントの削除などの操作"
+            description="ログアウトやアカウントの削除などの操作"
             isOpen={openSections.has("account")}
             onToggle={toggleSection}
             danger
           >
-            <p className="text-sm text-slate-500 mb-4">
-              アカウントを削除すると、すべての有給データが完全に失われます。この操作は取り消せません。
-            </p>
-            <button
-              type="button"
-              onClick={openDeleteDialog}
-              className="text-sm font-medium text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors"
-            >
-              アカウントを削除する
-            </button>
+            {/* ログアウト */}
+            <div className="mb-5">
+              <p className="text-sm font-medium text-slate-700 mb-1">ログアウト</p>
+              <p className="text-xs text-slate-400 mb-3">
+                このデバイスのセッションを終了します
+              </p>
+              <button
+                type="button"
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                className="btn-secondary text-sm"
+              >
+                ログアウト
+              </button>
+            </div>
+
+            <div className="border-t border-slate-100 pt-5">
+              <p className="text-sm font-medium text-slate-700 mb-1">アカウント削除</p>
+              <p className="text-sm text-slate-500 mb-3">
+                アカウントを削除すると、すべての有給データが完全に失われます。この操作は取り消せません。
+              </p>
+              <button
+                type="button"
+                onClick={openDeleteDialog}
+                className="text-sm font-medium text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors"
+              >
+                アカウントを削除する
+              </button>
+            </div>
           </AccordionSection>
         </div>
       )}
