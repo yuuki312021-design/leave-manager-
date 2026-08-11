@@ -242,8 +242,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-800">設定</h2>
-        <p className="text-sm text-slate-500 mt-0.5">
+        <h2 className="text-2xl font-bold text-white drop-shadow">設定</h2>
+        <p className="text-sm text-white/75 mt-0.5">
           プロフィールと年度ごとの有給付与日数を設定します
         </p>
       </div>

@@ -265,11 +265,11 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">ダッシュボード</h2>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h2 className="text-2xl font-bold text-white drop-shadow">ダッシュボード</h2>
+          <p className="text-sm text-white/75 mt-0.5">
             {currentYear}年度（{currentYear}/4/1 〜 {currentYear + 1}/3/31）
             {userInfo?.tenure && (
-              <span className="ml-2 text-blue-600 font-medium">
+              <span className="ml-2 text-sky-200 font-medium">
                 {userInfo.tenure.text}
               </span>
             )}
