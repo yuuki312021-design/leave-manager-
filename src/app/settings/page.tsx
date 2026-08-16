@@ -9,6 +9,7 @@ import {
 } from "@/lib/utils";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import { BG_LS_KEY } from "@/components/BackgroundProvider";
+import { useBgTheme } from "@/hooks/useBgTheme";
 
 interface FiscalYear {
   id: number;
@@ -129,6 +130,8 @@ async function resizeAndCompress(file: File): Promise<string> {
 // 設定ページ本体
 // ───────────────────────────────────────────
 export default function SettingsPage() {
+  const bgTheme = useBgTheme();
+  const isDark = bgTheme === "dark";
   // データ
   const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -457,14 +460,14 @@ export default function SettingsPage() {
   return (
     <div className="space-y-4 max-w-2xl">
       <div>
-        <h2 className="text-2xl font-bold text-white drop-shadow">詳細設定</h2>
-        <p className="text-sm text-white/75 mt-0.5">
+        <h2 className={`text-2xl font-bold ${isDark ? "text-white drop-shadow" : "text-slate-900"}`}>詳細設定</h2>
+        <p className={`text-sm mt-0.5 ${isDark ? "text-white/75" : "text-slate-600"}`}>
           通知・入社日・有給年度などの設定を管理します
         </p>
       </div>
 
       {loading && (
-        <div className="text-center py-8 text-white/70 text-sm">読み込み中...</div>
+        <div className={`text-center py-8 text-sm ${isDark ? "text-white/70" : "text-slate-500"}`}>読み込み中...</div>
       )}
 
       {!loading && (

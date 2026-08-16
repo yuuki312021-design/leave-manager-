@@ -13,6 +13,7 @@ import {
   LEAVE_TYPE_SHORT,
   type LeaveType,
 } from "@/lib/utils";
+import { useBgTheme } from "@/hooks/useBgTheme";
 
 interface FiscalYear {
   id: number;
@@ -171,6 +172,8 @@ function tomorrowStr(): string {
 
 export default function DashboardPage() {
   const currentYear = getCurrentFiscalYear();
+  const bgTheme = useBgTheme();
+  const isDark = bgTheme === "dark";
   const [fiscalYear, setFiscalYear] = useState<FiscalYear | null>(null);
   const [recentRecords, setRecentRecords] = useState<LeaveRecord[]>([]);
   const [todayRecords, setTodayRecords] = useState<LeaveRecord[]>([]);
@@ -265,11 +268,11 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white drop-shadow">ダッシュボード</h2>
-          <p className="text-sm text-white/75 mt-0.5">
+          <h2 className={`text-2xl font-bold ${isDark ? "text-white drop-shadow" : "text-slate-900"}`}>ダッシュボード</h2>
+          <p className={`text-sm mt-0.5 ${isDark ? "text-white/75" : "text-slate-600"}`}>
             {currentYear}年度（{currentYear}/4/1 〜 {currentYear + 1}/3/31）
             {userInfo?.tenure && (
-              <span className="ml-2 text-sky-200 font-medium">
+              <span className={`ml-2 font-medium ${isDark ? "text-sky-200" : "text-blue-700"}`}>
                 {userInfo.tenure.text}
               </span>
             )}

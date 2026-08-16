@@ -66,6 +66,28 @@ function formatRecord(r: {
   return `${r.date} ${detail}`;
 }
 
+/** 通知種別に応じたメール本文を生成 */
+function buildMailHtml(
+  type: "day-before" | "same-day",
+  dateStr: string,
+  records: {
+    date: string;
+    type: string;
+    hours: number | null;
+    startTime: string | null;
+    endTime: string | null;
+    note: string | null;
+  }[]
+) {
+  const label = type === "day-before" ? "明日" : "本日";
+  return `
+    <h2>【有給取得リマインダー】${label}の予定</h2>
+    <p>${label}（${dateStr}）に以下の有給取得が登録されています：</p>
+    <ul>${records.map((r) => `<li>${formatRecord(r)}</li>`).join("")}</ul>
+    <p>有給管理アプリより自動送信</p>
+  `;
+}
+
 // GET /api/cron/notifications
 // 外部cronサービス or Renderのcron jobから呼び出す
 export async function GET(request: NextRequest) {
@@ -115,12 +137,7 @@ export async function GET(request: NextRequest) {
     // 前日通知
     const tomorrowByUser = groupByUser(tomorrowRecords);
     for (const [, { email, records }] of tomorrowByUser) {
-      const html = `
-        <h2>【有給取得リマインダー】明日の予定</h2>
-        <p>明日（${tomorrow}）に以下の有給取得が登録されています：</p>
-        <ul>${records.map((r) => `<li>${formatRecord(r)}</li>`).join("")}</ul>
-        <p>有給管理アプリより自動送信</p>
-      `;
+      const html = buildMailHtml("day-before", tomorrow, records);
       await sendMail(email, `【有給リマインダー】明日（${tomorrow}）の予定`, html);
       sentDaybefore += records.length;
     }
@@ -134,12 +151,7 @@ export async function GET(request: NextRequest) {
     // 当日通知
     const todayByUser = groupByUser(todayRecords);
     for (const [, { email, records }] of todayByUser) {
-      const html = `
-        <h2>【有給取得リマインダー】本日の予定</h2>
-        <p>本日（${today}）に以下の有給取得が登録されています：</p>
-        <ul>${records.map((r) => `<li>${formatRecord(r)}</li>`).join("")}</ul>
-        <p>有給管理アプリより自動送信</p>
-      `;
+      const html = buildMailHtml("same-day", today, records);
       await sendMail(email, `【有給リマインダー】本日（${today}）の予定`, html);
       sentDayof += records.length;
     }

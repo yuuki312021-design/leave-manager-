@@ -1,7 +1,7 @@
 // Service Worker for 有給休暇管理 PWA
-// Version: 1.1.0
+// Version: 1.2.0
 
-const CACHE_NAME = 'leave-manager-v2';
+const CACHE_NAME = 'leave-manager-v3';
 
 // 認証不要の純粋な静的アセットのみ precache する
 // NOTE: '/' は含めない（認証が必要なページはミドルウェアがリダイレクトするため、
@@ -11,6 +11,15 @@ const STATIC_ASSETS = [
   '/icon-192.png',
   '/icon-512.png',
 ];
+
+// -----------------------------------------------
+// Message: SKIP_WAITING を受け取ったら即座に activate
+// -----------------------------------------------
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
 
 // -----------------------------------------------
 // Install: precache static assets
@@ -53,7 +62,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Always go to network for API and auth routes
+  // API / auth ルートは常にネットワーク優先（オフライン時のみエラー返却）
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) {
     event.respondWith(
       fetch(event.request).catch(() => {
@@ -66,36 +75,51 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML ナビゲーションリクエスト（ページ遷移）は常にネットワークファースト
-  // 認証状態によってサーバー側でリダイレクトが必要なため、キャッシュしない
+  // HTML ナビゲーションリクエストは network-first
+  // 起動時に必ず最新版を取得し、オフライン時のみキャッシュをフォールバック
   const acceptHeader = event.request.headers.get('accept') || '';
   if (acceptHeader.includes('text/html')) {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        // オフライン時はキャッシュからフォールバック
-        return caches.match(event.request).then(
-          (cached) =>
-            cached ||
-            new Response('<h1>オフラインです</h1>', {
-              status: 503,
-              headers: { 'Content-Type': 'text/html; charset=utf-8' },
-            })
-        );
-      })
+      fetch(event.request)
+        .then((response) => {
+          // 成功したレスポンスを並行してキャッシュ更新（次回オフライン用）
+          if (response && response.status === 200) {
+            const cloned = response.clone();
+            caches.open(CACHE_NAME).then((cache) =>
+              cache.put(event.request, cloned)
+            );
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request).then(
+            (cached) =>
+              cached ||
+              new Response('<h1>オフラインです</h1>', {
+                status: 503,
+                headers: { 'Content-Type': 'text/html; charset=utf-8' },
+              })
+          );
+        })
     );
     return;
   }
 
-  // 静的アセット（画像・JS・CSS など）はキャッシュファーストで処理
+  // 静的アセット（画像・JS・CSS など）は stale-while-revalidate
+  // 即座にキャッシュを返しつつ、裏でネットワークから最新版を取得してキャッシュを更新
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      const networkFetch = fetch(event.request).then((response) => {
-        if (response && response.status === 200) {
-          const cloned = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cloned));
-        }
-        return response;
-      });
+      const networkFetch = fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const cloned = response.clone();
+            caches.open(CACHE_NAME).then((cache) =>
+              cache.put(event.request, cloned)
+            );
+          }
+          return response;
+        })
+        .catch(() => undefined);
       return cached || networkFetch;
     })
   );
