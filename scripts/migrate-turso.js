@@ -220,6 +220,27 @@ const CREATE_STATEMENTS = [
       CONSTRAINT "feedbacks_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
     )`,
   },
+  {
+    label: "TABLE leave_drafts",
+    sql: `CREATE TABLE IF NOT EXISTS "leave_drafts" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "userId" INTEGER NOT NULL,
+      "date" TEXT NOT NULL,
+      "type" TEXT NOT NULL,
+      "period" TEXT,
+      "startTime" TEXT,
+      "endTime" TEXT,
+      "hours" TEXT,
+      "reason" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "leave_drafts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )`,
+  },
+  {
+    label: "INDEX leave_drafts_userId_key",
+    sql: `CREATE UNIQUE INDEX IF NOT EXISTS "leave_drafts_userId_key" ON "leave_drafts"("userId")`,
+  },
 ];
 
 // ── Step 2: ALTER TABLE（既存 DB への増分カラム追加）──────────────────────────

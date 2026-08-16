@@ -47,6 +47,20 @@ interface LeaveRow {
   fiscalYearId: string;
 }
 
+interface LeaveDraft {
+  id: number;
+  userId: number;
+  date: string;
+  type: LeaveType;
+  period: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  hours: string | null;
+  reason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 let rowCounter = 0;
 function createRow(today: string, fiscalYearId: string): LeaveRow {
   return {
@@ -73,6 +87,9 @@ export default function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [draft, setDraft] = useState<LeaveDraft | null>(null);
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
 
   const today = new Date().toISOString().split("T")[0];
   const currentFY = getCurrentFiscalYear();
@@ -84,8 +101,9 @@ export default function RegisterPage() {
       fetch("/api/fiscal-years").then((r) => r.json()),
       fetch("/api/profile").then((r) => r.json()),
       fetch("/api/leave-records").then((r) => r.json()),
+      fetch("/api/leave/draft").then((r) => r.json()),
     ])
-      .then(([fyData, profileData, recordsData]: [FiscalYear[], Profile, LeaveRecordBasic[]]) => {
+      .then(([fyData, profileData, recordsData, draftData]: [FiscalYear[], Profile, LeaveRecordBasic[], LeaveDraft | null]) => {
         setFiscalYears(fyData);
         setProfile(profileData);
         setSpecialRecords(
@@ -119,6 +137,11 @@ export default function RegisterPage() {
 
         const cur = fyData.find((f) => f.year === currentFY);
         const fyId = cur ? String(cur.id) : fyData.length > 0 ? String(fyData[0].id) : "";
+
+        if (draftData?.date) {
+          setDraft(draftData);
+          setShowDraftBanner(true);
+        }
         setRows([createRow(today, fyId)]);
       })
       .finally(() => setLoading(false));
@@ -303,6 +326,11 @@ export default function RegisterPage() {
         count === 1 ? "有給取得を登録しました" : `${count}件の有給取得を登録しました`
       );
 
+      // 登録成功時は下書きを削除
+      await fetch("/api/leave/draft", { method: "DELETE" }).catch(() => {});
+      setDraft(null);
+      setShowDraftBanner(false);
+
       // フォームをリセット（1行に戻す）
       const fyId = rows[0]?.fiscalYearId ?? (fiscalYears[0] ? String(fiscalYears[0].id) : "");
       setRows([createRow(today, fyId)]);
@@ -312,6 +340,71 @@ export default function RegisterPage() {
       setError("通信エラーが発生しました");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const restoreDraft = () => {
+    if (!draft) return;
+    const fyId = fiscalYears.find((f) => draft.date.startsWith(String(f.year)))?.id
+      ? String(fiscalYears.find((f) => draft.date.startsWith(String(f.year)))!.id)
+      : rows[0]?.fiscalYearId ?? ""; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    setRows([
+      {
+        id: String(++rowCounter),
+        date: draft.date,
+        type: draft.type,
+        hours: draft.hours ?? "",
+        startTime: draft.startTime ?? "",
+        endTime: draft.endTime ?? "",
+        note: draft.reason ?? "",
+        fiscalYearId: fyId,
+      },
+    ]);
+    setShowDraftBanner(false);
+  };
+
+  const discardDraft = async () => {
+    try {
+      await fetch("/api/leave/draft", { method: "DELETE" });
+      setDraft(null);
+      setShowDraftBanner(false);
+    } catch {
+      setError("下書きの破棄に失敗しました");
+    }
+  };
+
+  const saveDraft = async () => {
+    const row = rows[0];
+    if (!row || !row.date || !row.type) {
+      setError("下書き保存するには取得日と種別を入力してください");
+      return;
+    }
+    setDraftSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/leave/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: row.date,
+          type: row.type,
+          startTime: row.startTime || null,
+          endTime: row.endTime || null,
+          hours: row.hours || null,
+          reason: row.note || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "下書きの保存に失敗しました");
+        return;
+      }
+      setDraft(data);
+      setSuccess("下書きを保存しました");
+    } catch {
+      setError("通信エラーが発生しました");
+    } finally {
+      setDraftSaving(false);
     }
   };
 
@@ -341,6 +434,34 @@ export default function RegisterPage() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* 下書き復元バナー */}
+          {showDraftBanner && draft && (
+            <div className="max-w-2xl bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="text-sm text-blue-800">
+                <p className="font-medium">前回の下書きがあります</p>
+                <p className="text-blue-700/80 mt-0.5">
+                  {draft.date} / {LEAVE_TYPE_LABELS[draft.type]} / 最終更新: {new Date(draft.updatedAt).toLocaleString("ja-JP")}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={restoreDraft}
+                  className="btn-primary text-sm px-3 py-1.5"
+                >
+                  復元
+                </button>
+                <button
+                  type="button"
+                  onClick={discardDraft}
+                  className="btn-secondary text-sm px-3 py-1.5"
+                >
+                  破棄
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* 今年度の年5日取得義務 進捗バナー */}
           {currentFYData && (
             <div className={`max-w-2xl flex items-center gap-2 text-sm px-4 py-2.5 rounded-lg border ${
@@ -607,6 +728,14 @@ export default function RegisterPage() {
                 : rows.length === 1
                 ? "登録する"
                 : `まとめて登録（${rows.length}件）`}
+            </button>
+            <button
+              type="button"
+              onClick={saveDraft}
+              disabled={draftSaving || rows.some((r) => !r.date || !r.type)}
+              className="btn-secondary"
+            >
+              {draftSaving ? "保存中..." : "下書き保存"}
             </button>
             <button
               type="button"
