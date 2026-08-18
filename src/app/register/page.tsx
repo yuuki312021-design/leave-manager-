@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   calcMandatoryLeaveDays,
   calcSpecialLeaveInfo,
@@ -75,8 +75,24 @@ function createRow(today: string, fiscalYearId: string): LeaveRow {
   };
 }
 
-export default function RegisterPage() {
+export default function RegisterPageWrapper() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="text-slate-400">読み込み中...</div></div>}>
+      <RegisterPage />
+    </Suspense>
+  );
+}
+
+function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const suggestionId = searchParams.get("suggestionId");
+  const initialDate = searchParams.get("date");
+  const initialTitle = searchParams.get("title");
+  const initialStartTime = searchParams.get("startTime");
+  const initialEndTime = searchParams.get("endTime");
+  const initialAllDay = searchParams.get("allDay") === "true";
+
   const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [specialRecords, setSpecialRecords] = useState<SpecialRecord[]>([]);
@@ -142,10 +158,31 @@ export default function RegisterPage() {
           setDraft(draftData);
           setShowDraftBanner(true);
         }
-        setRows([createRow(today, fyId)]);
+
+        // suggestionId がある場合は候補内容で自動入力
+        if (suggestionId) {
+          const date = initialDate ?? today;
+          const resolvedFyId = resolveFiscalYearIdStatic(date, fyId, fyData);
+          const row: LeaveRow = {
+            id: String(++rowCounter),
+            date,
+            type: initialAllDay ? "full" : "hourly",
+            hours: "",
+            startTime: initialStartTime ?? "",
+            endTime: initialEndTime ?? "",
+            note: initialTitle ?? "",
+            fiscalYearId: resolvedFyId,
+          };
+          if (row.type === "hourly" && row.startTime && row.endTime) {
+            row.hours = calcHoursFromTimeStatic(row.startTime, row.endTime);
+          }
+          setRows([row]);
+        } else {
+          setRows([createRow(today, fyId)]);
+        }
       })
       .finally(() => setLoading(false));
-  }, [currentFY, today]);
+  }, [currentFY, today, suggestionId, initialDate, initialTitle, initialStartTime, initialEndTime, initialAllDay]);
 
   const specialLeave = profile?.joinedAt
     ? calcSpecialLeaveInfo(profile.joinedAt, specialRecords)
@@ -167,6 +204,18 @@ export default function RegisterPage() {
     return matched ? String(matched.id) : currentFyId;
   };
 
+  // suggestionId 自動入力用（fiscalYears読み込み前に使う静的版）
+  function resolveFiscalYearIdStatic(
+    dateStr: string,
+    currentFyId: string,
+    fyList: FiscalYear[]
+  ): string {
+    const [year, month] = dateStr.split("-").map(Number);
+    const fy = month >= 4 ? year : year - 1;
+    const matched = fyList.find((f) => f.year === fy);
+    return matched ? String(matched.id) : currentFyId;
+  }
+
   // 開始・終了時刻から時間数を自動計算
   const calcHoursFromTime = (start: string, end: string): string => {
     if (!start || !end) return "";
@@ -177,6 +226,16 @@ export default function RegisterPage() {
     const h = diffMin / 60;
     return String(Math.round(h * 10) / 10);
   };
+
+  function calcHoursFromTimeStatic(start: string, end: string): string {
+    if (!start || !end) return "";
+    const [sh, sm] = start.split(":").map(Number);
+    const [eh, em] = end.split(":").map(Number);
+    const diffMin = eh * 60 + em - (sh * 60 + sm);
+    if (diffMin <= 0) return "";
+    const h = diffMin / 60;
+    return String(Math.round(h * 10) / 10);
+  }
 
   // 行を更新するヘルパー
   const updateRow = (id: string, patch: Partial<LeaveRow>) => {
@@ -325,6 +384,15 @@ export default function RegisterPage() {
       setSuccess(
         count === 1 ? "有給取得を登録しました" : `${count}件の有給取得を登録しました`
       );
+
+      // 候補からの自動入力の場合、statusをapprovedに更新
+      if (suggestionId) {
+        await fetch("/api/calendar/suggestions", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: Number(suggestionId), status: "approved" }),
+        }).catch(() => {});
+      }
 
       // 登録成功時は下書きを削除
       await fetch("/api/leave/draft", { method: "DELETE" }).catch(() => {});

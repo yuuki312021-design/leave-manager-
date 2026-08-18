@@ -166,6 +166,13 @@ export default function SettingsPage() {
   const [testNotifLoading, setTestNotifLoading] = useState(false);
   const [testNotifResult, setTestNotifResult] = useState<string | null>(null);
 
+  // Googleカレンダー連携
+  const [calendarAccounts, setCalendarAccounts] = useState<{ id: number; provider: string; email: string | null }[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarFetching, setCalendarFetching] = useState(false);
+  const [calendarError, setCalendarError] = useState("");
+  const [calendarSuccess, setCalendarSuccess] = useState("");
+
   // アカウント削除
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
@@ -201,12 +208,14 @@ export default function SettingsPage() {
       fetch("/api/fiscal-years").then((r) => r.json()),
       fetch("/api/profile").then((r) => r.json()),
       fetch("/api/push/status").then((r) => r.json()),
+      fetch("/api/calendar/accounts").then((r) => r.json()),
     ])
       .then(
-        ([fyData, profileData, pushData]: [
+        ([fyData, profileData, pushData, calendarData]: [
           FiscalYear[],
           Profile,
           { pushEnabled: boolean; reminderTime: string },
+          { id: number; provider: string; email: string | null }[],
         ]) => {
           setFiscalYears(fyData);
           setProfile(profileData);
@@ -215,6 +224,7 @@ export default function SettingsPage() {
             setPushEnabled(pushData.pushEnabled ?? false);
             setReminderTime(pushData.reminderTime ?? "09:00");
           }
+          setCalendarAccounts(Array.isArray(calendarData) ? calendarData : []);
         }
       )
       .finally(() => setLoading(false));
@@ -284,6 +294,63 @@ export default function SettingsPage() {
       setTestNotifResult("失敗: 通信エラー");
     } finally {
       setTestNotifLoading(false);
+    }
+  };
+
+  const handleConnectCalendar = async () => {
+    setCalendarError("");
+    setCalendarSuccess("");
+    setCalendarLoading(true);
+    try {
+      const res = await fetch("/api/calendar/connect");
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        setCalendarError(data.error ?? "認証URLの取得に失敗しました");
+      } else {
+        window.location.href = data.url;
+      }
+    } catch {
+      setCalendarError("通信エラーが発生しました");
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const handleDisconnectCalendar = async (id: number) => {
+    setCalendarError("");
+    setCalendarSuccess("");
+    try {
+      const res = await fetch(`/api/calendar/accounts?id=${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setCalendarError(data.error ?? "連携解除に失敗しました");
+      } else {
+        setCalendarAccounts((prev) => prev.filter((a) => a.id !== id));
+        setCalendarSuccess("連携を解除しました");
+      }
+    } catch {
+      setCalendarError("通信エラーが発生しました");
+    }
+  };
+
+  const handleFetchCalendar = async () => {
+    setCalendarError("");
+    setCalendarSuccess("");
+    setCalendarFetching(true);
+    try {
+      const res = await fetch("/api/calendar/fetch", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setCalendarError(data.error ?? "カレンダー予定の取得に失敗しました");
+      } else {
+        setCalendarSuccess(`${data.created ?? 0}件の候補を生成しました`);
+      }
+    } catch {
+      setCalendarError("通信エラーが発生しました");
+    } finally {
+      setCalendarFetching(false);
     }
   };
 
@@ -848,7 +915,81 @@ export default function SettingsPage() {
             </div>
           </AccordionSection>
 
-          {/* ── 4. 背景画像設定 ── */}
+          {/* ── 4. Googleカレンダー連携 ── */}
+          <AccordionSection
+            id="calendar"
+            icon="📅"
+            title="Googleカレンダー連携"
+            description="カレンダーの予定から有給取得候補を自動生成します"
+            isOpen={openSections.has("calendar")}
+            onToggle={toggleSection}
+          >
+            {calendarError && (
+              <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{calendarError}</div>
+            )}
+            {calendarSuccess && (
+              <div className="mb-3 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">{calendarSuccess}</div>
+            )}
+
+            {calendarAccounts.length === 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm text-slate-500">
+                  Googleカレンダーと連携すると、予定から有給取得の候補を自動で提案します。
+                </p>
+                <button
+                  type="button"
+                  onClick={handleConnectCalendar}
+                  disabled={calendarLoading}
+                  className="btn-primary text-sm"
+                >
+                  {calendarLoading ? "読み込み中..." : "Googleカレンダーと連携する"}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  {calendarAccounts.map((account) => (
+                    <div
+                      key={account.id}
+                      className="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-700 truncate">
+                          {account.email ?? account.provider}
+                        </p>
+                        <p className="text-xs text-slate-400">Googleカレンダー</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDisconnectCalendar(account.id)}
+                        className="text-xs text-red-600 hover:text-red-700 hover:underline"
+                      >
+                        解除
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleFetchCalendar}
+                    disabled={calendarFetching}
+                    className="btn-primary text-sm disabled:opacity-50"
+                  >
+                    {calendarFetching ? "取得中..." : "カレンダーから候補を取得"}
+                  </button>
+                  <a
+                    href="/suggestions"
+                    className="btn-secondary text-sm inline-flex items-center"
+                  >
+                    候補を確認
+                  </a>
+                </div>
+              </div>
+            )}
+          </AccordionSection>
+
+          {/* ── 5. 背景画像設定 ── */}
           <AccordionSection
             id="background"
             icon="🖼️"

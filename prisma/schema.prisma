@@ -12,21 +12,60 @@ datasource db {
 }
 
 model User {
-  id                Int                @id @default(autoincrement())
-  email             String             @unique
-  passwordHash      String
-  name              String
-  joinedAt          DateTime?          @map("joined_at") // 入社日
-  reminderTime      String             @default("09:00") // 通知時刻 HH:MM
-  pushEnabled       Boolean            @default(false)   // プッシュ通知ON/OFF
-  createdAt         DateTime           @default(now())
-  fiscalYears       FiscalYear[]
-  leaveRecords      LeaveRecord[]
-  pushSubscriptions PushSubscription[]
-  feedbacks         Feedback[]
-  leaveDraft        LeaveDraft?
+  id                      Int                      @id @default(autoincrement())
+  email                   String                   @unique
+  passwordHash            String
+  name                    String
+  joinedAt                DateTime?                @map("joined_at") // 入社日
+  reminderTime            String                   @default("09:00") // 通知時刻 HH:MM
+  pushEnabled             Boolean                  @default(false)   // プッシュ通知ON/OFF
+  createdAt               DateTime                 @default(now())
+  fiscalYears             FiscalYear[]
+  leaveRecords            LeaveRecord[]
+  pushSubscriptions       PushSubscription[]
+  feedbacks               Feedback[]
+  leaveDraft              LeaveDraft?
+  calendarAccounts        CalendarAccount[]
+  pendingLeaveSuggestions PendingLeaveSuggestion[]
 
   @@map("users")
+}
+
+model CalendarAccount {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  provider     String   // 'google'
+  email        String?
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@map("calendar_accounts")
+}
+
+model PendingLeaveSuggestion {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calendarId  String
+  eventId     String
+  title       String
+  startDate   String
+  endDate     String
+  startTime   String?
+  endTime     String?
+  isAllDay    Boolean   @default(false)
+  status      String    @default("pending") // pending | approved | rejected
+  notifiedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, eventId])
+  @@map("pending_leave_suggestions")
 }
 
 model PushSubscription {

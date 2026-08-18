@@ -241,6 +241,45 @@ const CREATE_STATEMENTS = [
     label: "INDEX leave_drafts_userId_key",
     sql: `CREATE UNIQUE INDEX IF NOT EXISTS "leave_drafts_userId_key" ON "leave_drafts"("userId")`,
   },
+  {
+    label: "TABLE calendar_accounts",
+    sql: `CREATE TABLE IF NOT EXISTS "calendar_accounts" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "userId" INTEGER NOT NULL,
+      "provider" TEXT NOT NULL,
+      "email" TEXT,
+      "accessToken" TEXT NOT NULL,
+      "refreshToken" TEXT NOT NULL,
+      "expiresAt" DATETIME NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "calendar_accounts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )`,
+  },
+  {
+    label: "TABLE pending_leave_suggestions",
+    sql: `CREATE TABLE IF NOT EXISTS "pending_leave_suggestions" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "userId" INTEGER NOT NULL,
+      "calendarId" TEXT NOT NULL,
+      "eventId" TEXT NOT NULL,
+      "title" TEXT NOT NULL,
+      "startDate" TEXT NOT NULL,
+      "endDate" TEXT NOT NULL,
+      "startTime" TEXT,
+      "endTime" TEXT,
+      "isAllDay" BOOLEAN NOT NULL DEFAULT false,
+      "status" TEXT NOT NULL DEFAULT 'pending',
+      "notifiedAt" DATETIME,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "pending_leave_suggestions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )`,
+  },
+  {
+    label: "INDEX pending_leave_suggestions_userId_eventId_key",
+    sql: `CREATE UNIQUE INDEX IF NOT EXISTS "pending_leave_suggestions_userId_eventId_key" ON "pending_leave_suggestions"("userId", "eventId")`,
+  },
 ];
 
 // ── Step 2: ALTER TABLE（既存 DB への増分カラム追加）──────────────────────────
