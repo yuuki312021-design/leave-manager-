@@ -915,79 +915,83 @@ export default function SettingsPage() {
             </div>
           </AccordionSection>
 
-          {/* ── 4. Googleカレンダー連携 ── */}
-          <AccordionSection
-            id="calendar"
-            icon="📅"
-            title="Googleカレンダー連携"
-            description="カレンダーの予定から有給取得候補を自動生成します"
-            isOpen={openSections.has("calendar")}
-            onToggle={toggleSection}
-          >
-            {calendarError && (
-              <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{calendarError}</div>
-            )}
-            {calendarSuccess && (
-              <div className="mb-3 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">{calendarSuccess}</div>
-            )}
+          {false && (
+            <>
+              {/* ── 4. Googleカレンダー連携（一時非表示） ── */}
+              <AccordionSection
+                id="calendar"
+                icon="📅"
+                title="Googleカレンダー連携"
+                description="カレンダーの予定から有給取得候補を自動生成します"
+                isOpen={openSections.has("calendar")}
+                onToggle={toggleSection}
+              >
+                {calendarError && (
+                  <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{calendarError}</div>
+                )}
+                {calendarSuccess && (
+                  <div className="mb-3 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">{calendarSuccess}</div>
+                )}
 
-            {calendarAccounts.length === 0 ? (
-              <div className="space-y-3">
-                <p className="text-sm text-slate-500">
-                  Googleカレンダーと連携すると、予定から有給取得の候補を自動で提案します。
-                </p>
-                <button
-                  type="button"
-                  onClick={handleConnectCalendar}
-                  disabled={calendarLoading}
-                  className="btn-primary text-sm"
-                >
-                  {calendarLoading ? "読み込み中..." : "Googleカレンダーと連携する"}
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  {calendarAccounts.map((account) => (
-                    <div
-                      key={account.id}
-                      className="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+                {calendarAccounts.length === 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-slate-500">
+                      Googleカレンダーと連携すると、予定から有給取得の候補を自動で提案します。
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleConnectCalendar}
+                      disabled={calendarLoading}
+                      className="btn-primary text-sm"
                     >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-700 truncate">
-                          {account.email ?? account.provider}
-                        </p>
-                        <p className="text-xs text-slate-400">Googleカレンダー</p>
-                      </div>
+                      {calendarLoading ? "読み込み中..." : "Googleカレンダーと連携する"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      {calendarAccounts.map((account) => (
+                        <div
+                          key={account.id}
+                          className="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-slate-700 truncate">
+                              {account.email ?? account.provider}
+                            </p>
+                            <p className="text-xs text-slate-400">Googleカレンダー</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDisconnectCalendar(account.id)}
+                            className="text-xs text-red-600 hover:text-red-700 hover:underline"
+                          >
+                            解除
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => handleDisconnectCalendar(account.id)}
-                        className="text-xs text-red-600 hover:text-red-700 hover:underline"
+                        onClick={handleFetchCalendar}
+                        disabled={calendarFetching}
+                        className="btn-primary text-sm disabled:opacity-50"
                       >
-                        解除
+                        {calendarFetching ? "取得中..." : "カレンダーから候補を取得"}
                       </button>
+                      <a
+                        href="/suggestions"
+                        className="btn-secondary text-sm inline-flex items-center"
+                      >
+                        候補を確認
+                      </a>
                     </div>
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={handleFetchCalendar}
-                    disabled={calendarFetching}
-                    className="btn-primary text-sm disabled:opacity-50"
-                  >
-                    {calendarFetching ? "取得中..." : "カレンダーから候補を取得"}
-                  </button>
-                  <a
-                    href="/suggestions"
-                    className="btn-secondary text-sm inline-flex items-center"
-                  >
-                    候補を確認
-                  </a>
-                </div>
-              </div>
-            )}
-          </AccordionSection>
+                  </div>
+                )}
+              </AccordionSection>
+            </>
+          )}
 
           {/* ── 5. 背景画像設定 ── */}
           <AccordionSection
