@@ -419,8 +419,8 @@ export default function DashboardPage() {
                           {LEAVE_TYPE_SHORT[type]}
                         </p>
                         <p className="text-lg font-semibold text-slate-700 mt-0.5">
-                          {val % 1 === 0 ? val : val.toFixed(3).replace(/\.?0+$/, "")}
-                          <span className="text-xs font-normal ml-0.5">日</span>
+                          {type === "hourly" ? val * 8 : val % 1 === 0 ? val : val.toFixed(3).replace(/\.?0+$/, "")}
+                          <span className="text-xs font-normal ml-0.5">{type === "hourly" ? "時間" : "日"}</span>
                         </p>
                       </div>
                     );
@@ -480,9 +480,7 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <span className="text-sm font-medium text-slate-600">
-                      {record.consumedDays % 1 === 0
-                        ? record.consumedDays
-                        : record.consumedDays.toFixed(3).replace(/\.?0+$/, "")}
+                      {record.consumedDays}
                       日
                     </span>
                   </div>

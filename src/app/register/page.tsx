@@ -712,9 +712,7 @@ function RegisterPage() {
                         {row.hours && (
                           <p className="text-xs text-slate-500 mt-1">
                             ={" "}
-                            {(parseFloat(row.hours) / 8)
-                              .toFixed(3)
-                              .replace(/\.?0+$/, "")}{" "}
+                            {Math.ceil(parseFloat(row.hours) / 8)}{" "}
                             日分
                           </p>
                         )}

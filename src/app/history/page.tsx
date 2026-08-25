@@ -448,11 +448,7 @@ export default function HistoryPage() {
                       ) : "—"}
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-slate-700">
-                      {record.consumedDays % 1 === 0
-                        ? record.consumedDays
-                        : record.consumedDays
-                            .toFixed(3)
-                            .replace(/\.?0+$/, "")}
+                      {record.consumedDays}
                       日
                     </td>
                     <td className="px-4 py-3 text-slate-500">
@@ -512,11 +508,7 @@ export default function HistoryPage() {
                   </div>
                   <div className="text-right flex-shrink-0 ml-3">
                     <div className="font-semibold text-slate-700">
-                      {record.consumedDays % 1 === 0
-                        ? record.consumedDays
-                        : record.consumedDays
-                            .toFixed(3)
-                            .replace(/\.?0+$/, "")}
+                      {record.consumedDays}
                       日
                     </div>
                     <div className="flex flex-col gap-1 mt-1">

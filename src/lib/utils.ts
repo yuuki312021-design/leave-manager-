@@ -34,9 +34,25 @@ export function calcHourlyLeaveHours(
 /** 年間5日有給取得義務 */
 export const MANDATORY_LEAVE_DAYS = 5;
 
+/** 取得種別から消化日数を計算 */
+export function calcConsumedDays(type: LeaveType, hours?: number): number {
+  switch (type) {
+    case "full":
+    case "special":
+      return 1;
+    case "am_half":
+    case "pm_half":
+      return 0.5;
+    case "hourly":
+      return Math.ceil((hours ?? 0) / 8);
+    default:
+      return 0;
+  }
+}
+
 /**
  * 年5日取得義務の対象取得日数を計算（special は対象外）
- * full=1日、am_half/pm_half=0.5日、hourly=hours/8日
+ * full=1日、am_half/pm_half=0.5日、hourly=8時間ごとに1日
  */
 export function calcMandatoryLeaveDays(
   records: { type: string; hours?: number | null; fiscalYearId?: number }[],
@@ -54,7 +70,7 @@ export function calcMandatoryLeaveDays(
       case "pm_half":
         return sum + 0.5;
       case "hourly":
-        return sum + (r.hours ?? 0) / 8;
+        return sum + Math.ceil((r.hours ?? 0) / 8);
       default:
         return sum;
     }
@@ -84,22 +100,6 @@ export const LEAVE_TYPE_BADGE: Record<LeaveType, string> = {
   hourly: "bg-amber-100 text-amber-700",
   special: "bg-pink-100 text-pink-700",
 };
-
-/** 取得種別から消化日数を計算 */
-export function calcConsumedDays(type: LeaveType, hours?: number): number {
-  switch (type) {
-    case "full":
-    case "special":
-      return 1;
-    case "am_half":
-    case "pm_half":
-      return 0.5;
-    case "hourly":
-      return (hours ?? 0) / 8;
-    default:
-      return 0;
-  }
-}
 
 function parseLocalDate(dateStr: string): Date {
   const [y, m, d] = dateStr.split("-").map(Number);
