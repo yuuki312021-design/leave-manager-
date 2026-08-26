@@ -20,6 +20,7 @@ export async function GET() {
           select: {
             consumedDays: true,
             type: true,
+            hours: true,
           },
         },
       },

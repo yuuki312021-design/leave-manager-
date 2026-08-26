@@ -77,6 +77,84 @@ export function calcMandatoryLeaveDays(
   }, 0);
 }
 
+/** 合計時間（時間休）を「日数・残り時間」に変換（8時間=1日） */
+export function hoursToDaysHours(totalHours: number): {
+  days: number;
+  hours: number;
+} {
+  const days = Math.floor(totalHours / 8);
+  const hours = totalHours % 8;
+  return { days, hours };
+}
+
+/**
+ * 日数と時間休の合計時間から「X日Y時間」形式の文字列を生成
+ * @param days 終日休・半日休などで換算済みの日数（0.5=半日）
+ * @param hourlyHours 時間休の合計時間
+ */
+export function formatDaysAndHours(
+  days: number,
+  hourlyHours: number = 0
+): string {
+  const { days: hoursAsDays, hours } = hoursToDaysHours(hourlyHours);
+  const totalDays = days + hoursAsDays;
+
+  if (totalDays === 0) return `${hours}時間`;
+  if (hours === 0) return `${totalDays}日`;
+  return `${totalDays}日${hours}時間`;
+}
+
+/**
+ * 取得レコードから日数（終日・半日・特別）と時間休時間を集計し、
+ * 「X日Y時間」形式の文字列で返す
+ */
+export function formatConsumedFromRecords(
+  records: { type: string; hours?: number | null; consumedDays?: number }[]
+): string {
+  let days = 0;
+  let hourlyHours = 0;
+  for (const r of records) {
+    if (r.type === "hourly") {
+      hourlyHours += r.hours ?? 0;
+    } else {
+      days +=
+        r.consumedDays ??
+        (r.type === "full" || r.type === "special"
+          ? 1
+          : r.type === "am_half" || r.type === "pm_half"
+          ? 0.5
+          : 0);
+    }
+  }
+  return formatDaysAndHours(days, hourlyHours);
+}
+
+/**
+ * 付与日数と取得レコードから残りを「X日Y時間」形式で返す
+ */
+export function formatRemainingFromRecords(
+  grantedDays: number,
+  records: { type: string; hours?: number | null; consumedDays?: number }[]
+): string {
+  let days = 0;
+  let hourlyHours = 0;
+  for (const r of records) {
+    if (r.type === "hourly") {
+      hourlyHours += r.hours ?? 0;
+    } else {
+      days +=
+        r.consumedDays ??
+        (r.type === "full" || r.type === "special"
+          ? 1
+          : r.type === "am_half" || r.type === "pm_half"
+          ? 0.5
+          : 0);
+    }
+  }
+  const totalRemainingHours = grantedDays * 8 - (days * 8 + hourlyHours);
+  return formatDaysAndHours(0, totalRemainingHours);
+}
+
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   full: "全休（1日）",
   am_half: "午前半休（0.5日）",

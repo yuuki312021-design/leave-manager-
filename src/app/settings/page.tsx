@@ -5,6 +5,9 @@ import { signOut } from "next-auth/react";
 import {
   calcSpecialLeaveInfo,
   calcTenure,
+  formatDaysAndHours,
+  formatConsumedFromRecords,
+  formatRemainingFromRecords,
   getCurrentFiscalYear,
 } from "@/lib/utils";
 import PushNotificationManager from "@/components/PushNotificationManager";
@@ -15,7 +18,7 @@ interface FiscalYear {
   id: number;
   year: number;
   grantedDays: number;
-  leaveRecords: { consumedDays: number; type: string }[];
+  leaveRecords: { consumedDays: number; type: string; hours: number | null }[];
 }
 
 interface Profile {
@@ -798,10 +801,14 @@ export default function SettingsPage() {
               ) : (
                 <div className="space-y-3">
                   {fiscalYears.map((fy) => {
-                    const consumed = fy.leaveRecords
-                      .filter((r) => r.type !== "special")
-                      .reduce((sum, r) => sum + r.consumedDays, 0);
-                    const remaining = fy.grantedDays - consumed;
+                    const regularRecords = fy.leaveRecords.filter(
+                      (r) => r.type !== "special"
+                    );
+                    const consumed = formatConsumedFromRecords(regularRecords);
+                    const remaining = formatRemainingFromRecords(
+                      fy.grantedDays,
+                      regularRecords
+                    );
                     const isEditing = editingId === fy.id;
 
                     return (
@@ -858,25 +865,19 @@ export default function SettingsPage() {
                                 </span>
                                 <span>
                                   取得:{" "}
-                                  <strong className="text-orange-600">
-                                    {consumed % 1 === 0
-                                      ? consumed
-                                      : consumed.toFixed(3).replace(/\.?0+$/, "")}
-                                  </strong>{" "}
-                                  日
+                                  <strong className="text-orange-600">{consumed}</strong>
                                 </span>
                                 <span>
                                   残:{" "}
                                   <strong
                                     className={
-                                      remaining <= 5 ? "text-red-600" : "text-green-600"
+                                      remaining.includes("0日")
+                                        ? "text-red-600"
+                                        : "text-green-600"
                                     }
                                   >
-                                    {remaining % 1 === 0
-                                      ? remaining
-                                      : remaining.toFixed(3).replace(/\.?0+$/, "")}
-                                  </strong>{" "}
-                                  日
+                                    {remaining}
+                                  </strong>
                                 </span>
                                 <span className="text-slate-400">
                                   （{fy.leaveRecords.length} 件）

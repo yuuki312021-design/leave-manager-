@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   calcMandatoryLeaveDays,
   calcSpecialLeaveInfo,
+  formatDaysAndHours,
+  formatRemainingFromRecords,
   getCurrentFiscalYear,
   HALF_DAY_LEAVE_ANNUAL_LIMIT,
   HOURLY_LEAVE_ANNUAL_LIMIT,
@@ -539,15 +541,11 @@ function RegisterPage() {
             }`}>
               <span>今年度取得日数:</span>
               <span className="font-semibold">
-                {mandatoryTakenCurrentFY % 1 === 0
-                  ? mandatoryTakenCurrentFY
-                  : mandatoryTakenCurrentFY.toFixed(3).replace(/\.?0+$/, "")} 日 / {MANDATORY_LEAVE_DAYS} 日
+                {formatDaysAndHours(mandatoryTakenCurrentFY)} / {MANDATORY_LEAVE_DAYS} 日
               </span>
               {!isMandatoryMetCurrentFY && (
                 <span>
-                  （あと{mandatoryRemainingCurrentFY % 1 === 0
-                    ? mandatoryRemainingCurrentFY
-                    : mandatoryRemainingCurrentFY.toFixed(3).replace(/\.?0+$/, "")}日）
+                  （あと{formatDaysAndHours(mandatoryRemainingCurrentFY)}）
                 </span>
               )}
               {isMandatoryMetCurrentFY && <span>（達成）</span>}
@@ -712,8 +710,11 @@ function RegisterPage() {
                         {row.hours && (
                           <p className="text-xs text-slate-500 mt-1">
                             ={" "}
-                            {Math.ceil(parseFloat(row.hours) / 8)}{" "}
-                            日分
+                            {formatDaysAndHours(
+                              0,
+                              Math.ceil(parseFloat(row.hours) / 8) * 8
+                            )}
+                            {" "}分
                           </p>
                         )}
                       </div>

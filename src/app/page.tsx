@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   calcMandatoryLeaveDays,
+  formatDaysAndHours,
+  formatRemainingFromRecords,
+  formatConsumedFromRecords,
   getCurrentFiscalYear,
   HALF_DAY_LEAVE_ANNUAL_LIMIT,
   HALF_DAY_LEAVE_REMAINING_RED_THRESHOLD,
@@ -22,6 +25,7 @@ interface FiscalYear {
   leaveRecords: {
     consumedDays: number;
     type: string;
+    hours: number | null;
   }[];
 }
 
@@ -66,8 +70,8 @@ function SummaryCard({
   textColor,
 }: {
   label: string;
-  value: number;
-  unit: string;
+  value: React.ReactNode;
+  unit?: string;
   color: string;
   sub?: string;
   textColor?: string;
@@ -77,7 +81,6 @@ function SummaryCard({
       <p className="text-sm text-slate-500 font-medium">{label}</p>
       <div className="mt-2 flex items-baseline gap-1">
         <span className={`text-3xl font-bold ${textColor ?? "text-slate-800"}`}>{value}</span>
-        <span className="text-sm text-slate-500">{unit}</span>
       </div>
       {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
     </div>
@@ -133,17 +136,13 @@ function MandatoryLeaveBanner({
 
   const remaining = Math.max(0, required - taken);
   const isMet = taken >= required;
-  const takenDisplay =
-    taken % 1 === 0 ? taken : parseFloat(taken.toFixed(3));
-  const remainingDisplay =
-    remaining % 1 === 0 ? remaining : parseFloat(remaining.toFixed(3));
 
   if (isMet) {
     return (
       <div className="rounded-xl border-l-4 border-green-500 bg-green-50 shadow-sm p-4 flex items-start gap-3">
         <span className="text-green-600 text-lg leading-none mt-0.5">✅</span>
         <p className="text-sm font-semibold text-green-700">
-          法定有給{required}日の取得が完了しています（{takenDisplay}日取得済み）
+          法定有給{required}日の取得が完了しています（{formatDaysAndHours(taken)}取得済み）
         </p>
       </div>
     );
@@ -153,8 +152,8 @@ function MandatoryLeaveBanner({
     <div className="rounded-xl border-l-4 border-red-500 bg-red-50 shadow-sm p-4 flex items-start gap-3">
       <span className="text-red-500 text-lg leading-none mt-0.5">⚠️</span>
       <p className="text-sm font-semibold text-red-700">
-        2月末までに法定有給{required}日の取得が必要です。現在{takenDisplay}日取得済み
-        {remaining > 0 && `（あと${remainingDisplay}日取得してください）`}
+        2月末までに法定有給{required}日の取得が必要です。現在{formatDaysAndHours(taken)}取得済み
+        {remaining > 0 && `（あと${formatDaysAndHours(remaining)}取得してください）`}
       </p>
     </div>
   );
@@ -320,42 +319,42 @@ export default function DashboardPage() {
           >
             <SummaryCard
               label="付与日数"
-              value={fiscalYear.grantedDays}
-              unit="日"
+              value={formatDaysAndHours(fiscalYear.grantedDays)}
               color="border-blue-400"
             />
             <SummaryCard
               label="取得日数"
-              value={Number(totalConsumed.toFixed(2))}
-              unit="日"
+              value={formatConsumedFromRecords(
+                fiscalYear.leaveRecords.filter((r) => r.type !== "special")
+              )}
               color="border-orange-400"
               sub={`${regularRecords.length} 件`}
             />
             <SummaryCard
               label="残日数"
-              value={Number(remaining.toFixed(2))}
-              unit="日"
+              value={formatRemainingFromRecords(
+                fiscalYear.grantedDays,
+                fiscalYear.leaveRecords.filter((r) => r.type !== "special")
+              )}
               color={remaining <= 10 ? "border-red-400" : "border-green-400"}
               textColor={remaining <= 10 ? "text-red-500" : undefined}
             />
             {userInfo?.specialLeave && (
               <SummaryCard
                 label={`特別有給（${userInfo.specialLeave.milestone}周年）`}
-                value={Number(userInfo.specialLeave.remainingDays.toFixed(2))}
-                unit="日"
+                value={formatDaysAndHours(userInfo.specialLeave.remainingDays)}
                 color="border-pink-400"
                 sub={`${userInfo.specialLeave.anniversaryStart} 〜 ${userInfo.specialLeave.anniversaryEnd}`}
               />
             )}
             <SummaryCard
               label="年5日取得義務"
-              value={mandatoryDaysTaken % 1 === 0 ? mandatoryDaysTaken : parseFloat(mandatoryDaysTaken.toFixed(3))}
-              unit="日"
+              value={formatDaysAndHours(mandatoryDaysTaken)}
               color={isMandatoryMet ? "border-green-400" : mandatoryDaysTaken >= MANDATORY_LEAVE_DAYS / 2 ? "border-orange-400" : "border-red-400"}
               textColor={isMandatoryMet ? "text-green-600" : mandatoryDaysTaken >= MANDATORY_LEAVE_DAYS / 2 ? "text-orange-500" : "text-red-500"}
               sub={isMandatoryMet
                 ? `/ ${MANDATORY_LEAVE_DAYS}日（達成）`
-                : `/ ${MANDATORY_LEAVE_DAYS}日（あと${mandatoryRemainingDays % 1 === 0 ? mandatoryRemainingDays : parseFloat(mandatoryRemainingDays.toFixed(3))}日）`}
+                : `/ ${MANDATORY_LEAVE_DAYS}日（あと${formatDaysAndHours(mandatoryRemainingDays)}）`}
             />
           </div>
 
@@ -419,8 +418,9 @@ export default function DashboardPage() {
                           {LEAVE_TYPE_SHORT[type]}
                         </p>
                         <p className="text-lg font-semibold text-slate-700 mt-0.5">
-                          {type === "hourly" ? val * 8 : val % 1 === 0 ? val : val.toFixed(3).replace(/\.?0+$/, "")}
-                          <span className="text-xs font-normal ml-0.5">{type === "hourly" ? "時間" : "日"}</span>
+                          {type === "hourly"
+                            ? formatDaysAndHours(0, val * 8)
+                            : formatDaysAndHours(val)}
                         </p>
                       </div>
                     );
@@ -480,8 +480,7 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <span className="text-sm font-medium text-slate-600">
-                      {record.consumedDays}
-                      日
+                      {formatDaysAndHours(record.consumedDays)}
                     </span>
                   </div>
                 ))}
