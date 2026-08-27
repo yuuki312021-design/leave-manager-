@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   calcMandatoryLeaveDays,
   calcSpecialLeaveInfo,
-  formatDaysAndHours,
+  formatDaysOnly,
   getCurrentFiscalYear,
   HALF_DAY_LEAVE_ANNUAL_LIMIT,
   HOURLY_LEAVE_ANNUAL_LIMIT,
@@ -542,7 +542,7 @@ function RegisterPage() {
               <span>今年度取得日数:</span>
               <span className="font-semibold">
                 <LeaveDaysDisplay
-                  value={formatDaysAndHours(mandatoryTakenCurrentFY)}
+                  value={formatDaysOnly(mandatoryTakenCurrentFY)}
                   size="sm"
                 />
                 {" "}/ {MANDATORY_LEAVE_DAYS} 日
@@ -551,7 +551,7 @@ function RegisterPage() {
                 <span>
                   （あと
                   <LeaveDaysDisplay
-                    value={formatDaysAndHours(mandatoryRemainingCurrentFY)}
+                    value={formatDaysOnly(mandatoryRemainingCurrentFY)}
                     size="sm"
                   />
                   ）
@@ -720,9 +720,8 @@ function RegisterPage() {
                           <p className="text-xs text-slate-500 mt-1">
                             ={" "}
                             <LeaveDaysDisplay
-                              value={formatDaysAndHours(
-                                0,
-                                Math.ceil(parseFloat(row.hours) / 8) * 8
+                              value={formatDaysOnly(
+                                Math.ceil(parseFloat(row.hours) / 8)
                               )}
                               size="sm"
                               className="text-slate-500"

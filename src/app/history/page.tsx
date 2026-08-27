@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import {
-  formatDaysAndHours,
+  formatDaysOnly,
+  formatConsumedDaysOnly,
   LEAVE_TYPE_LABELS,
   LEAVE_TYPE_SHORT,
   LEAVE_TYPE_BADGE,
@@ -348,16 +349,13 @@ export default function HistoryPage() {
           <div className="card text-center py-3 border-l-4 border-blue-400">
             <p className="text-xs text-slate-500">付与</p>
             <p className="text-xl font-bold text-slate-700 mt-1">
-              {grantedDays}<span className="text-xs font-normal ml-0.5">日</span>
+              <LeaveDaysDisplay value={formatDaysOnly(grantedDays)} size="md" />
             </p>
           </div>
           <div className="card text-center py-3 border-l-4 border-orange-400">
             <p className="text-xs text-slate-500">取得</p>
             <p className="text-xl font-bold text-slate-700 mt-1">
-              {totalConsumed % 1 === 0
-                ? totalConsumed
-                : totalConsumed.toFixed(3).replace(/\.?0+$/, "")}
-              <span className="text-xs font-normal ml-0.5">日</span>
+              <LeaveDaysDisplay value={formatConsumedDaysOnly(records.filter((r) => r.type !== "special"))} size="md" />
             </p>
           </div>
           <div className="card text-center py-3 border-l-4 border-green-400">
@@ -365,17 +363,15 @@ export default function HistoryPage() {
             <p className="text-xl font-bold text-slate-700 mt-1">
               {(() => {
                 const r = grantedDays - totalConsumed;
-                return r % 1 === 0 ? r : r.toFixed(3).replace(/\.?0+$/, "");
+                return <LeaveDaysDisplay value={formatDaysOnly(r)} size="md" />;
               })()}
-              <span className="text-xs font-normal ml-0.5">日</span>
             </p>
           </div>
           {specialConsumed > 0 && (
             <div className="card text-center py-3 border-l-4 border-pink-400">
               <p className="text-xs text-slate-500">特別有給</p>
               <p className="text-xl font-bold text-slate-700 mt-1">
-                {specialConsumed}
-                <span className="text-xs font-normal ml-0.5">日</span>
+                <LeaveDaysDisplay value={formatDaysOnly(specialConsumed)} size="md" />
               </p>
             </div>
           )}
@@ -451,10 +447,7 @@ export default function HistoryPage() {
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-slate-700">
                       <LeaveDaysDisplay
-                        value={formatDaysAndHours(
-                          record.type === "hourly" ? 0 : record.consumedDays,
-                          record.type === "hourly" ? record.hours ?? 0 : 0
-                        )}
+                        value={formatDaysOnly(record.consumedDays)}
                         size="sm"
                         className="text-slate-700"
                       />
@@ -517,10 +510,7 @@ export default function HistoryPage() {
                   <div className="text-right flex-shrink-0 ml-3">
                     <div className="font-semibold text-slate-700">
                       <LeaveDaysDisplay
-                        value={formatDaysAndHours(
-                          record.type === "hourly" ? 0 : record.consumedDays,
-                          record.type === "hourly" ? record.hours ?? 0 : 0
-                        )}
+                        value={formatDaysOnly(record.consumedDays)}
                         size="sm"
                         className="text-slate-700"
                       />

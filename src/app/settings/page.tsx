@@ -5,8 +5,8 @@ import { signOut } from "next-auth/react";
 import {
   calcSpecialLeaveInfo,
   calcTenure,
-  formatDaysAndHours,
-  formatConsumedFromRecords,
+  formatDaysOnly,
+  formatConsumedDaysOnly,
   formatRemainingDaysOnly,
   getCurrentFiscalYear,
 } from "@/lib/utils";
@@ -805,7 +805,7 @@ export default function SettingsPage() {
                     const regularRecords = fy.leaveRecords.filter(
                       (r) => r.type !== "special"
                     );
-                    const consumed = formatConsumedFromRecords(regularRecords);
+                    const consumed = formatConsumedDaysOnly(regularRecords);
                     const remaining = formatRemainingDaysOnly(
                       fy.grantedDays,
                       regularRecords
@@ -857,12 +857,13 @@ export default function SettingsPage() {
                               </div>
                             ) : (
                               <div className="mt-2 flex items-center gap-4 text-sm flex-wrap">
-                                <span>
+                                <span className="flex items-center gap-1">
                                   付与:{" "}
-                                  <strong className="text-slate-700">
-                                    {fy.grantedDays}
-                                  </strong>{" "}
-                                  日
+                                  <LeaveDaysDisplay
+                                    value={formatDaysOnly(fy.grantedDays)}
+                                    size="sm"
+                                    className="text-slate-700"
+                                  />
                                 </span>
                                 <span className="flex items-center gap-1">
                                   取得:{" "}

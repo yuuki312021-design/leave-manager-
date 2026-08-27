@@ -12,7 +12,7 @@ type ParsedValue =
   | { kind: "hours"; hours: number };
 
 function parseDaysAndHours(value: string): ParsedValue {
-  const dayHourMatch = value.match(/^(\d+)日(\d+)時間$/);
+  const dayHourMatch = value.match(/^(\d+(?:\.\d+)?)日(\d+)時間$/);
   if (dayHourMatch) {
     return {
       kind: "daysHours",
@@ -21,7 +21,7 @@ function parseDaysAndHours(value: string): ParsedValue {
     };
   }
 
-  const dayMatch = value.match(/^(\d+)日$/);
+  const dayMatch = value.match(/^(\d+(?:\.\d+)?)日$/);
   if (dayMatch) {
     return { kind: "days", days: Number(dayMatch[1]) };
   }

@@ -70,7 +70,8 @@ export function calcMandatoryLeaveDays(
       case "pm_half":
         return sum + 0.5;
       case "hourly":
-        return sum + Math.ceil((r.hours ?? 0) / 8);
+        // 時間休は年5日取得義務のカウントに含めない
+        return sum;
       default:
         return sum;
     }
@@ -177,6 +178,21 @@ export function formatRemainingDaysOnly(
   const totalRemainingHours = Math.max(0, grantedDays * 8 - (days * 8 + hourlyHours));
   const remainingDays = Math.floor(totalRemainingHours / 8);
   return `${remainingDays}日`;
+}
+
+export function formatDaysOnly(days: number): string {
+  return `${days}日`;
+}
+
+/**
+ * 取得レコードから合計取得日数（時間休は consumedDays で換算済み）を
+ * 「X日」形式の文字列で返す
+ */
+export function formatConsumedDaysOnly(
+  records: { consumedDays?: number }[]
+): string {
+  const total = records.reduce((sum, r) => sum + (r.consumedDays ?? 0), 0);
+  return formatDaysOnly(total);
 }
 
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {

@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   calcMandatoryLeaveDays,
-  formatDaysAndHours,
+  formatDaysOnly,
+  formatConsumedDaysOnly,
   formatRemainingDaysOnly,
-  formatConsumedFromRecords,
   getCurrentFiscalYear,
   HALF_DAY_LEAVE_ANNUAL_LIMIT,
   HALF_DAY_LEAVE_REMAINING_RED_THRESHOLD,
@@ -143,7 +143,7 @@ function MandatoryLeaveBanner({
       <div className="rounded-xl border-l-4 border-green-500 bg-green-50 shadow-sm p-4 flex items-start gap-3">
         <span className="text-green-600 text-lg leading-none mt-0.5">✅</span>
         <p className="text-sm font-semibold text-green-700">
-          法定有給{required}日の取得が完了しています（{formatDaysAndHours(taken)}取得済み）
+          法定有給{required}日の取得が完了しています（{formatDaysOnly(taken)}取得済み）
         </p>
       </div>
     );
@@ -153,8 +153,8 @@ function MandatoryLeaveBanner({
     <div className="rounded-xl border-l-4 border-red-500 bg-red-50 shadow-sm p-4 flex items-start gap-3">
       <span className="text-red-500 text-lg leading-none mt-0.5">⚠️</span>
       <p className="text-sm font-semibold text-red-700">
-        2月末までに法定有給{required}日の取得が必要です。現在{formatDaysAndHours(taken)}取得済み
-        {remaining > 0 && `（あと${formatDaysAndHours(remaining)}取得してください）`}
+        2月末までに法定有給{required}日の取得が必要です。現在{formatDaysOnly(taken)}取得済み
+        {remaining > 0 && `（あと${formatDaysOnly(remaining)}取得してください）`}
       </p>
     </div>
   );
@@ -333,7 +333,7 @@ export default function DashboardPage() {
               label="付与日数"
               value={
                 <LeaveDaysDisplay
-                  value={formatDaysAndHours(fiscalYear.grantedDays)}
+                  value={formatDaysOnly(fiscalYear.grantedDays)}
                   size="lg"
                 />
               }
@@ -343,9 +343,7 @@ export default function DashboardPage() {
               label="取得日数"
               value={
                 <LeaveDaysDisplay
-                  value={formatConsumedFromRecords(
-                    fiscalYear.leaveRecords.filter((r) => r.type !== "special")
-                  )}
+                  value={formatConsumedDaysOnly(regularRecords)}
                   size="lg"
                 />
               }
@@ -358,7 +356,7 @@ export default function DashboardPage() {
                 <LeaveDaysDisplay
                   value={formatRemainingDaysOnly(
                     fiscalYear.grantedDays,
-                    fiscalYear.leaveRecords.filter((r) => r.type !== "special")
+                    regularRecords
                   )}
                   size="lg"
                 />
@@ -371,7 +369,7 @@ export default function DashboardPage() {
                 label={`特別有給（${userInfo.specialLeave.milestone}周年）`}
                 value={
                   <LeaveDaysDisplay
-                    value={formatDaysAndHours(userInfo.specialLeave.remainingDays)}
+                    value={formatDaysOnly(userInfo.specialLeave.remainingDays)}
                     size="lg"
                   />
                 }
@@ -383,7 +381,7 @@ export default function DashboardPage() {
               label="年5日取得義務"
               value={
                 <LeaveDaysDisplay
-                  value={formatDaysAndHours(mandatoryDaysTaken)}
+                  value={formatDaysOnly(mandatoryDaysTaken)}
                   size="lg"
                 />
               }
@@ -391,7 +389,7 @@ export default function DashboardPage() {
               textColor={isMandatoryMet ? "text-green-600" : mandatoryDaysTaken >= MANDATORY_LEAVE_DAYS / 2 ? "text-orange-500" : "text-red-500"}
               sub={isMandatoryMet
                 ? `/ ${MANDATORY_LEAVE_DAYS}日（達成）`
-                : `/ ${MANDATORY_LEAVE_DAYS}日（あと${formatDaysAndHours(mandatoryRemainingDays)}）`}
+                : `/ ${MANDATORY_LEAVE_DAYS}日（あと${formatDaysOnly(mandatoryRemainingDays)}）`}
             />
           </div>
 
@@ -455,21 +453,11 @@ export default function DashboardPage() {
                           {LEAVE_TYPE_SHORT[type]}
                         </p>
                         <p className="text-lg font-semibold text-slate-700 mt-0.5">
-                          {type === "hourly"
-                            ? (
-                              <LeaveDaysDisplay
-                                value={formatDaysAndHours(0, val * 8)}
-                                size="sm"
-                                className="text-slate-700"
-                              />
-                            )
-                            : (
-                              <LeaveDaysDisplay
-                                value={formatDaysAndHours(val)}
-                                size="sm"
-                                className="text-slate-700"
-                              />
-                            )}
+                          <LeaveDaysDisplay
+                            value={formatDaysOnly(val)}
+                            size="sm"
+                            className="text-slate-700"
+                          />
                         </p>
                       </div>
                     );
@@ -530,7 +518,7 @@ export default function DashboardPage() {
                     </div>
                     <span className="text-sm font-medium text-slate-600">
                       <LeaveDaysDisplay
-                        value={formatDaysAndHours(record.consumedDays)}
+                        value={formatDaysOnly(record.consumedDays)}
                         size="sm"
                         className="text-slate-600"
                       />
