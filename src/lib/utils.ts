@@ -155,6 +155,30 @@ export function formatRemainingFromRecords(
   return formatDaysAndHours(0, totalRemainingHours);
 }
 
+export function formatRemainingDaysOnly(
+  grantedDays: number,
+  records: { type: string; hours?: number | null; consumedDays?: number }[]
+): string {
+  let days = 0;
+  let hourlyHours = 0;
+  for (const r of records) {
+    if (r.type === "hourly") {
+      hourlyHours += r.hours ?? 0;
+    } else {
+      days +=
+        r.consumedDays ??
+        (r.type === "full" || r.type === "special"
+          ? 1
+          : r.type === "am_half" || r.type === "pm_half"
+          ? 0.5
+          : 0);
+    }
+  }
+  const totalRemainingHours = Math.max(0, grantedDays * 8 - (days * 8 + hourlyHours));
+  const remainingDays = Math.floor(totalRemainingHours / 8);
+  return `${remainingDays}日`;
+}
+
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   full: "全休（1日）",
   am_half: "午前半休（0.5日）",

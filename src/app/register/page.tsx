@@ -6,7 +6,6 @@ import {
   calcMandatoryLeaveDays,
   calcSpecialLeaveInfo,
   formatDaysAndHours,
-  formatRemainingFromRecords,
   getCurrentFiscalYear,
   HALF_DAY_LEAVE_ANNUAL_LIMIT,
   HOURLY_LEAVE_ANNUAL_LIMIT,

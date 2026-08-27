@@ -7,7 +7,7 @@ import {
   calcTenure,
   formatDaysAndHours,
   formatConsumedFromRecords,
-  formatRemainingFromRecords,
+  formatRemainingDaysOnly,
   getCurrentFiscalYear,
 } from "@/lib/utils";
 import PushNotificationManager from "@/components/PushNotificationManager";
@@ -806,7 +806,7 @@ export default function SettingsPage() {
                       (r) => r.type !== "special"
                     );
                     const consumed = formatConsumedFromRecords(regularRecords);
-                    const remaining = formatRemainingFromRecords(
+                    const remaining = formatRemainingDaysOnly(
                       fy.grantedDays,
                       regularRecords
                     );
@@ -878,7 +878,7 @@ export default function SettingsPage() {
                                     value={remaining}
                                     size="sm"
                                     className={
-                                      remaining.startsWith("0日") || remaining === "0時間"
+                                      remaining === "0日"
                                         ? "text-red-600"
                                         : "text-green-600"
                                     }

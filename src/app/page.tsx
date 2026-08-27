@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   calcMandatoryLeaveDays,
   formatDaysAndHours,
-  formatRemainingFromRecords,
+  formatRemainingDaysOnly,
   formatConsumedFromRecords,
   getCurrentFiscalYear,
   HALF_DAY_LEAVE_ANNUAL_LIMIT,
@@ -227,7 +227,18 @@ export default function DashboardPage() {
   const regularRecords =
     fiscalYear?.leaveRecords.filter((r) => r.type !== "special") ?? [];
   const totalConsumed = regularRecords.reduce((sum, r) => sum + r.consumedDays, 0);
-  const remaining = (fiscalYear?.grantedDays ?? 0) - totalConsumed;
+  // 時間休も含めた残日数（8時間=1日、切り捨て）
+  const remainingDays = Math.max(
+    0,
+    Math.floor(
+      ((fiscalYear?.grantedDays ?? 0) * 8 -
+        regularRecords.reduce(
+          (sum, r) => sum + (r.type === "hourly" ? r.hours ?? 0 : r.consumedDays * 8),
+          0
+        )) /
+        8
+    )
+  );
 
   // 半休取得件数（am_half + pm_half の回数）
   const halfDayCount = (fiscalYear?.leaveRecords ?? []).filter(
@@ -345,15 +356,15 @@ export default function DashboardPage() {
               label="残日数"
               value={
                 <LeaveDaysDisplay
-                  value={formatRemainingFromRecords(
+                  value={formatRemainingDaysOnly(
                     fiscalYear.grantedDays,
                     fiscalYear.leaveRecords.filter((r) => r.type !== "special")
                   )}
                   size="lg"
                 />
               }
-              color={remaining <= 10 ? "border-red-400" : "border-green-400"}
-              textColor={remaining <= 10 ? "text-red-500" : undefined}
+              color={remainingDays <= 10 ? "border-red-400" : "border-green-400"}
+              textColor={remainingDays <= 10 ? "text-red-500" : undefined}
             />
             {userInfo?.specialLeave && (
               <SummaryCard
@@ -413,7 +424,7 @@ export default function DashboardPage() {
             <div className="w-full bg-slate-100 rounded-full h-3">
               <div
                 className={`h-3 rounded-full transition-all ${
-                  remaining <= 10
+                  remainingDays <= 10
                     ? "bg-red-400"
                     : usageRate >= 50
                     ? "bg-orange-400"
