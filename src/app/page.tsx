@@ -17,6 +17,7 @@ import {
   type LeaveType,
 } from "@/lib/utils";
 import { useBgTheme } from "@/hooks/useBgTheme";
+import { LeaveDaysDisplay } from "@/components/LeaveDaysDisplay";
 
 interface FiscalYear {
   id: number;
@@ -319,37 +320,62 @@ export default function DashboardPage() {
           >
             <SummaryCard
               label="付与日数"
-              value={formatDaysAndHours(fiscalYear.grantedDays)}
+              value={
+                <LeaveDaysDisplay
+                  value={formatDaysAndHours(fiscalYear.grantedDays)}
+                  size="lg"
+                />
+              }
               color="border-blue-400"
             />
             <SummaryCard
               label="取得日数"
-              value={formatConsumedFromRecords(
-                fiscalYear.leaveRecords.filter((r) => r.type !== "special")
-              )}
+              value={
+                <LeaveDaysDisplay
+                  value={formatConsumedFromRecords(
+                    fiscalYear.leaveRecords.filter((r) => r.type !== "special")
+                  )}
+                  size="lg"
+                />
+              }
               color="border-orange-400"
               sub={`${regularRecords.length} 件`}
             />
             <SummaryCard
               label="残日数"
-              value={formatRemainingFromRecords(
-                fiscalYear.grantedDays,
-                fiscalYear.leaveRecords.filter((r) => r.type !== "special")
-              )}
+              value={
+                <LeaveDaysDisplay
+                  value={formatRemainingFromRecords(
+                    fiscalYear.grantedDays,
+                    fiscalYear.leaveRecords.filter((r) => r.type !== "special")
+                  )}
+                  size="lg"
+                />
+              }
               color={remaining <= 10 ? "border-red-400" : "border-green-400"}
               textColor={remaining <= 10 ? "text-red-500" : undefined}
             />
             {userInfo?.specialLeave && (
               <SummaryCard
                 label={`特別有給（${userInfo.specialLeave.milestone}周年）`}
-                value={formatDaysAndHours(userInfo.specialLeave.remainingDays)}
+                value={
+                  <LeaveDaysDisplay
+                    value={formatDaysAndHours(userInfo.specialLeave.remainingDays)}
+                    size="lg"
+                  />
+                }
                 color="border-pink-400"
                 sub={`${userInfo.specialLeave.anniversaryStart} 〜 ${userInfo.specialLeave.anniversaryEnd}`}
               />
             )}
             <SummaryCard
               label="年5日取得義務"
-              value={formatDaysAndHours(mandatoryDaysTaken)}
+              value={
+                <LeaveDaysDisplay
+                  value={formatDaysAndHours(mandatoryDaysTaken)}
+                  size="lg"
+                />
+              }
               color={isMandatoryMet ? "border-green-400" : mandatoryDaysTaken >= MANDATORY_LEAVE_DAYS / 2 ? "border-orange-400" : "border-red-400"}
               textColor={isMandatoryMet ? "text-green-600" : mandatoryDaysTaken >= MANDATORY_LEAVE_DAYS / 2 ? "text-orange-500" : "text-red-500"}
               sub={isMandatoryMet
@@ -419,8 +445,20 @@ export default function DashboardPage() {
                         </p>
                         <p className="text-lg font-semibold text-slate-700 mt-0.5">
                           {type === "hourly"
-                            ? formatDaysAndHours(0, val * 8)
-                            : formatDaysAndHours(val)}
+                            ? (
+                              <LeaveDaysDisplay
+                                value={formatDaysAndHours(0, val * 8)}
+                                size="sm"
+                                className="text-slate-700"
+                              />
+                            )
+                            : (
+                              <LeaveDaysDisplay
+                                value={formatDaysAndHours(val)}
+                                size="sm"
+                                className="text-slate-700"
+                              />
+                            )}
                         </p>
                       </div>
                     );
@@ -480,7 +518,11 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <span className="text-sm font-medium text-slate-600">
-                      {formatDaysAndHours(record.consumedDays)}
+                      <LeaveDaysDisplay
+                        value={formatDaysAndHours(record.consumedDays)}
+                        size="sm"
+                        className="text-slate-600"
+                      />
                     </span>
                   </div>
                 ))}

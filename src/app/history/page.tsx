@@ -8,6 +8,7 @@ import {
   LEAVE_TYPE_BADGE,
   type LeaveType,
 } from "@/lib/utils";
+import { LeaveDaysDisplay } from "@/components/LeaveDaysDisplay";
 
 interface FiscalYear {
   id: number;
@@ -449,10 +450,14 @@ export default function HistoryPage() {
                       ) : "—"}
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-slate-700">
-                      {formatDaysAndHours(
-                        record.type === "hourly" ? 0 : record.consumedDays,
-                        record.type === "hourly" ? record.hours ?? 0 : 0
-                      )}
+                      <LeaveDaysDisplay
+                        value={formatDaysAndHours(
+                          record.type === "hourly" ? 0 : record.consumedDays,
+                          record.type === "hourly" ? record.hours ?? 0 : 0
+                        )}
+                        size="sm"
+                        className="text-slate-700"
+                      />
                     </td>
                     <td className="px-4 py-3 text-slate-500">
                       {record.fiscalYear.year}年度
@@ -511,10 +516,14 @@ export default function HistoryPage() {
                   </div>
                   <div className="text-right flex-shrink-0 ml-3">
                     <div className="font-semibold text-slate-700">
-                      {formatDaysAndHours(
-                        record.type === "hourly" ? 0 : record.consumedDays,
-                        record.type === "hourly" ? record.hours ?? 0 : 0
-                      )}
+                      <LeaveDaysDisplay
+                        value={formatDaysAndHours(
+                          record.type === "hourly" ? 0 : record.consumedDays,
+                          record.type === "hourly" ? record.hours ?? 0 : 0
+                        )}
+                        size="sm"
+                        className="text-slate-700"
+                      />
                     </div>
                     <div className="flex flex-col gap-1 mt-1">
                       <button

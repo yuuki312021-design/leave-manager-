@@ -14,6 +14,7 @@ import {
   LEAVE_TYPE_LABELS,
   type LeaveType,
 } from "@/lib/utils";
+import { LeaveDaysDisplay } from "@/components/LeaveDaysDisplay";
 
 interface FiscalYear {
   id: number;
@@ -541,11 +542,20 @@ function RegisterPage() {
             }`}>
               <span>今年度取得日数:</span>
               <span className="font-semibold">
-                {formatDaysAndHours(mandatoryTakenCurrentFY)} / {MANDATORY_LEAVE_DAYS} 日
+                <LeaveDaysDisplay
+                  value={formatDaysAndHours(mandatoryTakenCurrentFY)}
+                  size="sm"
+                />
+                {" "}/ {MANDATORY_LEAVE_DAYS} 日
               </span>
               {!isMandatoryMetCurrentFY && (
                 <span>
-                  （あと{formatDaysAndHours(mandatoryRemainingCurrentFY)}）
+                  （あと
+                  <LeaveDaysDisplay
+                    value={formatDaysAndHours(mandatoryRemainingCurrentFY)}
+                    size="sm"
+                  />
+                  ）
                 </span>
               )}
               {isMandatoryMetCurrentFY && <span>（達成）</span>}
@@ -710,10 +720,14 @@ function RegisterPage() {
                         {row.hours && (
                           <p className="text-xs text-slate-500 mt-1">
                             ={" "}
-                            {formatDaysAndHours(
-                              0,
-                              Math.ceil(parseFloat(row.hours) / 8) * 8
-                            )}
+                            <LeaveDaysDisplay
+                              value={formatDaysAndHours(
+                                0,
+                                Math.ceil(parseFloat(row.hours) / 8) * 8
+                              )}
+                              size="sm"
+                              className="text-slate-500"
+                            />
                             {" "}分
                           </p>
                         )}

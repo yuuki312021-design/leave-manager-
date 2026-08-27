@@ -12,6 +12,7 @@ import {
 } from "@/lib/utils";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import { BG_LS_KEY } from "@/components/BackgroundProvider";
+import { LeaveDaysDisplay } from "@/components/LeaveDaysDisplay";
 import { useBgTheme } from "@/hooks/useBgTheme";
 
 interface FiscalYear {
@@ -863,21 +864,25 @@ export default function SettingsPage() {
                                   </strong>{" "}
                                   日
                                 </span>
-                                <span>
+                                <span className="flex items-center gap-1">
                                   取得:{" "}
-                                  <strong className="text-orange-600">{consumed}</strong>
+                                  <LeaveDaysDisplay
+                                    value={consumed}
+                                    size="sm"
+                                    className="text-orange-600"
+                                  />
                                 </span>
-                                <span>
+                                <span className="flex items-center gap-1">
                                   残:{" "}
-                                  <strong
+                                  <LeaveDaysDisplay
+                                    value={remaining}
+                                    size="sm"
                                     className={
-                                      remaining.includes("0日")
+                                      remaining.startsWith("0日") || remaining === "0時間"
                                         ? "text-red-600"
                                         : "text-green-600"
                                     }
-                                  >
-                                    {remaining}
-                                  </strong>
+                                  />
                                 </span>
                                 <span className="text-slate-400">
                                   （{fy.leaveRecords.length} 件）
