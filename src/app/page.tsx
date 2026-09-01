@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  calcConsumedDays,
   calcMandatoryLeaveDays,
+  calcTotalConsumedDays,
   formatDaysOnly,
   formatConsumedDaysOnly,
   formatRemainingDaysOnly,
@@ -226,18 +228,11 @@ export default function DashboardPage() {
   // 通常有給（特別有給は別集計）
   const regularRecords =
     fiscalYear?.leaveRecords.filter((r) => r.type !== "special") ?? [];
-  const totalConsumed = regularRecords.reduce((sum, r) => sum + r.consumedDays, 0);
-  // 時間休も含めた残日数（8時間=1日、切り捨て）
+  const totalConsumedDays = calcTotalConsumedDays(regularRecords);
+  // 時間休も含めた残日数（8時間=1日換算、切り捨て）
   const remainingDays = Math.max(
     0,
-    Math.floor(
-      ((fiscalYear?.grantedDays ?? 0) * 8 -
-        regularRecords.reduce(
-          (sum, r) => sum + (r.type === "hourly" ? r.hours ?? 0 : r.consumedDays * 8),
-          0
-        )) /
-        8
-    )
+    (fiscalYear?.grantedDays ?? 0) - totalConsumedDays
   );
 
   // 半休取得件数（am_half + pm_half の回数）
@@ -256,7 +251,9 @@ export default function DashboardPage() {
   // 種別ごとの集計（特別有給は通常集計から除外）
   const typeBreakdown = regularRecords.reduce(
     (acc, r) => {
-      acc[r.type as LeaveType] = (acc[r.type as LeaveType] ?? 0) + r.consumedDays;
+      const days =
+        r.consumedDays ?? calcConsumedDays(r.type as LeaveType, r.hours ?? undefined);
+      acc[r.type as LeaveType] = (acc[r.type as LeaveType] ?? 0) + days;
       return acc;
     },
     {} as Partial<Record<LeaveType, number>>
@@ -264,7 +261,7 @@ export default function DashboardPage() {
 
   const usageRate =
     fiscalYear && fiscalYear.grantedDays > 0
-      ? Math.min(100, (totalConsumed / fiscalYear.grantedDays) * 100)
+      ? Math.min(100, (totalConsumedDays / fiscalYear.grantedDays) * 100)
       : 0;
 
   if (loading) {

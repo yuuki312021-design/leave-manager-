@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  calcTotalConsumedDays,
   formatDaysOnly,
   formatConsumedDaysOnly,
   LEAVE_TYPE_LABELS,
@@ -283,12 +284,12 @@ export default function HistoryPage() {
   };
 
   // 年度ごとの消化合計（特別有給は通常有給の残日数計算から除外）
-  const totalConsumed = records
-    .filter((r) => r.type !== "special")
-    .reduce((sum, r) => sum + r.consumedDays, 0);
-  const specialConsumed = records
-    .filter((r) => r.type === "special")
-    .reduce((sum, r) => sum + r.consumedDays, 0);
+  const totalConsumed = calcTotalConsumedDays(
+    records.filter((r) => r.type !== "special")
+  );
+  const specialConsumed = calcTotalConsumedDays(
+    records.filter((r) => r.type === "special")
+  );
 
   // 選択年度の付与日数
   const grantedDays =

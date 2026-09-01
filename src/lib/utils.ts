@@ -105,6 +105,18 @@ export function formatDaysAndHours(
   return `${totalDays}日${hours}時間`;
 }
 
+/** 取得レコードから合計消化日数を計算（full=1, half=0.5, hourly=8時間ごとに1日） */
+export function calcTotalConsumedDays(
+  records: { type: string; hours?: number | null; consumedDays?: number }[]
+): number {
+  return records.reduce((sum, r) => {
+    if (r.consumedDays !== undefined && r.consumedDays !== null) {
+      return sum + r.consumedDays;
+    }
+    return sum + calcConsumedDays(r.type as LeaveType, r.hours ?? undefined);
+  }, 0);
+}
+
 /**
  * 取得レコードから日数（終日・半日・特別）と時間休時間を集計し、
  * 「X日Y時間」形式の文字列で返す
@@ -189,10 +201,9 @@ export function formatDaysOnly(days: number): string {
  * 「X日」形式の文字列で返す
  */
 export function formatConsumedDaysOnly(
-  records: { consumedDays?: number }[]
+  records: { type: string; hours?: number | null; consumedDays?: number }[]
 ): string {
-  const total = records.reduce((sum, r) => sum + (r.consumedDays ?? 0), 0);
-  return formatDaysOnly(total);
+  return formatDaysOnly(calcTotalConsumedDays(records));
 }
 
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
