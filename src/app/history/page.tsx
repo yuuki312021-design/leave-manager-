@@ -447,11 +447,17 @@ export default function HistoryPage() {
                       ) : "—"}
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-slate-700">
-                      <LeaveDaysDisplay
-                        value={formatDaysOnly(record.consumedDays)}
-                        size="sm"
-                        className="text-slate-700"
-                      />
+                      {record.type === "hourly" && record.hours != null ? (
+                        <span className="font-semibold text-slate-700">
+                          {record.hours}時間
+                        </span>
+                      ) : (
+                        <LeaveDaysDisplay
+                          value={formatDaysOnly(record.consumedDays)}
+                          size="sm"
+                          className="text-slate-700"
+                        />
+                      )}
                     </td>
                     <td className="px-4 py-3 text-slate-500">
                       {record.fiscalYear.year}年度
@@ -510,11 +516,17 @@ export default function HistoryPage() {
                   </div>
                   <div className="text-right flex-shrink-0 ml-3">
                     <div className="font-semibold text-slate-700">
-                      <LeaveDaysDisplay
-                        value={formatDaysOnly(record.consumedDays)}
-                        size="sm"
-                        className="text-slate-700"
-                      />
+                      {record.type === "hourly" && record.hours != null ? (
+                        <span className="font-semibold text-slate-700">
+                          {record.hours}時間
+                        </span>
+                      ) : (
+                        <LeaveDaysDisplay
+                          value={formatDaysOnly(record.consumedDays)}
+                          size="sm"
+                          className="text-slate-700"
+                        />
+                      )}
                     </div>
                     <div className="flex flex-col gap-1 mt-1">
                       <button
