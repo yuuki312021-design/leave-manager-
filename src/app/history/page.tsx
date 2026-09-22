@@ -5,6 +5,7 @@ import {
   calcTotalConsumedDays,
   formatDaysOnly,
   formatConsumedDaysOnly,
+  formatConsumedDaysAndHours,
   LEAVE_TYPE_LABELS,
   LEAVE_TYPE_SHORT,
   LEAVE_TYPE_BADGE,
@@ -550,10 +551,13 @@ export default function HistoryPage() {
 
           <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 text-sm text-slate-500">
             計 {records.length} 件 ／ 合計{" "}
-            {totalConsumed % 1 === 0
-              ? totalConsumed
-              : totalConsumed.toFixed(3).replace(/\.?0+$/, "")}{" "}
-            日
+            <LeaveDaysDisplay
+              value={formatConsumedDaysAndHours(
+                records.filter((r) => r.type !== "special")
+              )}
+              size="sm"
+              className="text-slate-500"
+            />
           </div>
         </div>
       )}
