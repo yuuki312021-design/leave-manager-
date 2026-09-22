@@ -7,7 +7,7 @@ import {
   calcMandatoryLeaveDays,
   calcTotalConsumedDays,
   formatDaysOnly,
-  formatConsumedDaysOnly,
+  formatConsumedDaysAndHours,
   formatRemainingDaysOnly,
   getCurrentFiscalYear,
   HALF_DAY_LEAVE_ANNUAL_LIMIT,
@@ -251,9 +251,13 @@ export default function DashboardPage() {
   // 種別ごとの集計（特別有給は通常集計から除外）
   const typeBreakdown = regularRecords.reduce(
     (acc, r) => {
-      const days =
-        r.consumedDays ?? calcConsumedDays(r.type as LeaveType, r.hours ?? undefined);
-      acc[r.type as LeaveType] = (acc[r.type as LeaveType] ?? 0) + days;
+      if (r.type === "hourly") {
+        acc.hourly = (acc.hourly ?? 0) + (r.hours ?? 0);
+      } else {
+        const days =
+          r.consumedDays ?? calcConsumedDays(r.type as LeaveType, r.hours ?? undefined);
+        acc[r.type as LeaveType] = (acc[r.type as LeaveType] ?? 0) + days;
+      }
       return acc;
     },
     {} as Partial<Record<LeaveType, number>>
@@ -340,7 +344,7 @@ export default function DashboardPage() {
               label="取得日数"
               value={
                 <LeaveDaysDisplay
-                  value={formatConsumedDaysOnly(regularRecords)}
+                  value={formatConsumedDaysAndHours(regularRecords)}
                   size="lg"
                 />
               }
@@ -450,11 +454,17 @@ export default function DashboardPage() {
                           {LEAVE_TYPE_SHORT[type]}
                         </p>
                         <p className="text-lg font-semibold text-slate-700 mt-0.5">
-                          <LeaveDaysDisplay
-                            value={formatDaysOnly(val)}
-                            size="sm"
-                            className="text-slate-700"
-                          />
+                          {type === "hourly" ? (
+                            <span className="font-semibold text-slate-700">
+                              {val}時間
+                            </span>
+                          ) : (
+                            <LeaveDaysDisplay
+                              value={formatDaysOnly(val)}
+                              size="sm"
+                              className="text-slate-700"
+                            />
+                          )}
                         </p>
                       </div>
                     );
@@ -514,11 +524,17 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <span className="text-sm font-medium text-slate-600">
-                      <LeaveDaysDisplay
-                        value={formatDaysOnly(record.consumedDays)}
-                        size="sm"
-                        className="text-slate-600"
-                      />
+                      {record.type === "hourly" && record.hours != null ? (
+                        <span className="font-semibold text-slate-600">
+                          {record.hours}時間
+                        </span>
+                      ) : (
+                        <LeaveDaysDisplay
+                          value={formatDaysOnly(record.consumedDays)}
+                          size="sm"
+                          className="text-slate-600"
+                        />
+                      )}
                     </span>
                   </div>
                 ))}

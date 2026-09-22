@@ -143,6 +143,34 @@ export function formatConsumedFromRecords(
 }
 
 /**
+ * 取得レコードから終日・半日の日数と時間休の時間数を集計し、
+ * 「X日Y時間」形式の文字列で返す（時間休は時間のまま換算しない）
+ */
+export function formatConsumedDaysAndHours(
+  records: { type: string; hours?: number | null; consumedDays?: number }[]
+): string {
+  let days = 0;
+  let hours = 0;
+  for (const r of records) {
+    if (r.type === "hourly") {
+      hours += r.hours ?? 0;
+    } else {
+      days +=
+        r.consumedDays ??
+        (r.type === "full" || r.type === "special"
+          ? 1
+          : r.type === "am_half" || r.type === "pm_half"
+          ? 0.5
+          : 0);
+    }
+  }
+  const daysStr = days % 1 === 0 ? String(days) : days.toFixed(1).replace(/\.0$/, "");
+  if (days === 0) return `${hours}時間`;
+  if (hours === 0) return `${daysStr}日`;
+  return `${daysStr}日${hours}時間`;
+}
+
+/**
  * 付与日数と取得レコードから残りを「X日Y時間」形式で返す
  */
 export function formatRemainingFromRecords(
