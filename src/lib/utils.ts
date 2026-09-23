@@ -220,6 +220,33 @@ export function formatRemainingDaysOnly(
   return `${remainingDays}日`;
 }
 
+/**
+ * 付与日数と取得レコードから残りを小数日で返す（8時間=1日換算）
+ */
+export function formatRemainingDaysDecimal(
+  grantedDays: number,
+  records: { type: string; hours?: number | null; consumedDays?: number }[]
+): string {
+  let days = 0;
+  let hourlyHours = 0;
+  for (const r of records) {
+    if (r.type === "hourly") {
+      hourlyHours += r.hours ?? 0;
+    } else {
+      days +=
+        r.consumedDays ??
+        (r.type === "full" || r.type === "special"
+          ? 1
+          : r.type === "am_half" || r.type === "pm_half"
+          ? 0.5
+          : 0);
+    }
+  }
+  const totalRemainingHours = Math.max(0, grantedDays * 8 - (days * 8 + hourlyHours));
+  const remainingDays = totalRemainingHours / 8;
+  return `${remainingDays.toFixed(2).replace(/\.?0+$/, "")}日`;
+}
+
 export function formatDaysOnly(days: number): string {
   return `${days}日`;
 }

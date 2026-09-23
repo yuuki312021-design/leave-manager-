@@ -8,7 +8,7 @@ import {
   calcTotalConsumedDays,
   formatDaysOnly,
   formatConsumedDaysAndHours,
-  formatRemainingDaysOnly,
+  formatRemainingDaysDecimal,
   getCurrentFiscalYear,
   HALF_DAY_LEAVE_ANNUAL_LIMIT,
   HALF_DAY_LEAVE_REMAINING_RED_THRESHOLD,
@@ -229,11 +229,21 @@ export default function DashboardPage() {
   const regularRecords =
     fiscalYear?.leaveRecords.filter((r) => r.type !== "special") ?? [];
   const totalConsumedDays = calcTotalConsumedDays(regularRecords);
-  // 時間休も含めた残日数（8時間=1日換算、切り捨て）
-  const remainingDays = Math.max(
-    0,
-    (fiscalYear?.grantedDays ?? 0) - totalConsumedDays
-  );
+  // 時間休も含めた残日数（8時間=1日換算、小数OK）
+  const remainingDays = (() => {
+    let days = 0;
+    let hourlyHours = 0;
+    for (const r of regularRecords) {
+      if (r.type === "hourly") {
+        hourlyHours += r.hours ?? 0;
+      } else {
+        days +=
+          r.consumedDays ??
+          (r.type === "full" ? 1 : r.type === "am_half" || r.type === "pm_half" ? 0.5 : 0);
+      }
+    }
+    return Math.max(0, (fiscalYear?.grantedDays ?? 0) - days - hourlyHours / 8);
+  })();
 
   // 半休取得件数（am_half + pm_half の回数）
   const halfDayCount = (fiscalYear?.leaveRecords ?? []).filter(
@@ -355,7 +365,7 @@ export default function DashboardPage() {
               label="残日数"
               value={
                 <LeaveDaysDisplay
-                  value={formatRemainingDaysOnly(
+                  value={formatRemainingDaysDecimal(
                     fiscalYear.grantedDays,
                     regularRecords
                   )}
@@ -382,7 +392,9 @@ export default function DashboardPage() {
               label="年5日取得義務"
               value={
                 <LeaveDaysDisplay
-                  value={formatDaysOnly(mandatoryDaysTaken)}
+                  value={formatConsumedDaysAndHours(
+                    fiscalYear?.leaveRecords?.filter((r) => r.type !== "special") ?? []
+                  )}
                   size="lg"
                 />
               }
